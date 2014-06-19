@@ -7,6 +7,7 @@ import java.util.Random;
 
 import mpigott.sort.FlashSort;
 
+import org.apache.commons.math3.stat.descriptive.SummaryStatistics;
 import org.junit.Test;
 
 /**
@@ -35,32 +36,35 @@ public class SortTest {
 	@Test
 	public void nonRandomFlashSortTest() {
 		ArrayList<Integer> input = createNonRandomInput(500);
+		ArrayList<Integer> copy = (ArrayList<Integer>) input.clone();
 		final int[] classBounds = FlashSort.sort(input, 50);
-		checkInput(input, classBounds);
+		checkInput(input, classBounds, copy, 50);
 	}
 
 	@Test //@Ignore
 	public void randomFlashSortTest() {
 		ArrayList<Integer> input = createRandomInput(1000, 500);
+		ArrayList<Integer> copy = (ArrayList<Integer>) input.clone();
 		int[] classBounds = null;
 		try {
 			classBounds = FlashSort.sort(input, 100);
 		} catch (RuntimeException re) {
 			printInputCode(input, 100);
 		}
-		checkInput(input, classBounds);
+		checkInput(input, classBounds, copy, 100);
 	}
 
 	@Test
 	public void randomFlashSortWithFewerValuesThanClassesTest() {
 		ArrayList<Integer> input = createRandomInput(500, 50);
+		ArrayList<Integer> copy = (ArrayList<Integer>) input.clone();
 		int[] classBounds = null;
 		try {
 			classBounds = FlashSort.sort(input, 100);
 		} catch (RuntimeException re) {
 			printInputCode(input, 100);
 		}
-		checkInput(input, classBounds);
+		checkInput(input, classBounds, copy, 100);
 	}
 
 	@Test
@@ -71,8 +75,9 @@ public class SortTest {
 		for (int i = 0; i < inputArray.length; ++i) {
 			input.add(inputArray[i]);
 		}
+		ArrayList<Integer> copy = (ArrayList<Integer>) input.clone();
 		final int[] classBounds = FlashSort.sort(input, numClasses);
-		checkInput(input, classBounds);
+		checkInput(input, classBounds, copy, numClasses);
 	}
 
 	@Test
@@ -83,8 +88,9 @@ public class SortTest {
 		for (int i = 0; i < inputArray.length; ++i) {
 			input.add(inputArray[i]);
 		}
+		ArrayList<Integer> copy = (ArrayList<Integer>) input.clone();
 		final int[] classBounds = FlashSort.sort(input, numClasses);
-		checkInput(input, classBounds);
+		checkInput(input, classBounds, copy, numClasses);
 	}
 
 	public void flashSortTest500ElemsWithRange500() {
@@ -94,11 +100,15 @@ public class SortTest {
 		for (int i = 0; i < inputArray.length; ++i) {
 			input.add(inputArray[i]);
 		}
+		ArrayList<Integer> copy = (ArrayList<Integer>) input.clone();
 		final int[] classBounds = FlashSort.sort(input, numClasses);
-		checkInput(input, classBounds);
+		checkInput(input, classBounds, copy, numClasses);
 	}
 
-	private void checkInput(ArrayList<Integer> input, int[] classBounds) {
+	private void checkInput(ArrayList<Integer> input, int[] classBounds, ArrayList<Integer> origArray, int numOrigClasses) {
+		if (classBounds == null) {
+			printInputCode(origArray, numOrigClasses);
+		}
 		assertNotNull(classBounds);
 
 		// Confirm the max value of a class is less than the min value of the next upper class.
@@ -107,8 +117,21 @@ public class SortTest {
 
 		for (int i = 1; i < classBounds.length; ++i) {
 			currMinAndMax = getMinAndMax(input, classBounds, i);
-			assertTrue("Maximum of class " + (i - 1) + " (" + prevMinAndMax[1] + ") must be less than the min of class " + i + " (" + currMinAndMax[0] + ").", prevMinAndMax[1] < currMinAndMax[0]);
+			final boolean isValid = prevMinAndMax[1] < currMinAndMax[0];
+			if (!isValid) {
+				printInputCode(origArray, numOrigClasses);
+			}
+			assertTrue("Maximum of class " + (i - 1) + " (" + prevMinAndMax[1] + ") must be less than the min of class " + i + " (" + currMinAndMax[0] + ").", isValid);
 			prevMinAndMax = currMinAndMax;
+		}
+
+		// Confirm the ranges are valid.
+		for (int i = 1; i < classBounds.length; ++i) {
+			final int range = (classBounds[i] - classBounds[i - 1]);
+			if (range < 0) {
+				printInputCode(origArray, numOrigClasses);
+			}
+			assertTrue("The length of a range (" + range + ") should never be negative. [" + classBounds[i - 1] + ", " + classBounds[i] + "]", range >= 0);
 		}
 	}
 
@@ -172,7 +195,7 @@ public class SortTest {
 		for (int i = 0; i < (input.size() - 1); ++i) {
 			System.out.print(input.get(i) + ", ");
 		}
-		System.out.println(input.get(input.size() - 1) + "};");
+		System.out.println(input.get(input.size() - 1) + " };");
 		System.out.println("final int numClasses = " + numClasses + ";");
 		System.out.println("ArrayList<Integer> input = new ArrayList<Integer>(inputArray.length);");
 		System.out.println("for (int i = 0; i < inputArray.length; ++i) {");
@@ -180,5 +203,41 @@ public class SortTest {
 		System.out.println("}");
 		System.out.println("final int[] classBounds = FlashSort.sort(input, numClasses, true);");
 		System.out.println("checkInput(input, classBounds);");
+	}
+
+	private void printClassSizes(int[] classBounds) {
+		int min = (classBounds[classBounds.length - 1] - classBounds[classBounds.length - 2]);
+		int minStart = classBounds.length - 2;
+		int minEnd = classBounds.length - 1;
+
+		int max = min;
+		int maxStart = minStart;
+		int maxEnd = maxStart;
+
+		int totalRangeSizes = min;
+		SummaryStatistics statistics = new SummaryStatistics();
+		statistics.addValue(min);
+
+		for (int i = 0; i < (classBounds.length - 1); ++i) {
+			if (i > 1) {
+				final int range = (classBounds[i] - classBounds[i - 1]);
+				statistics.addValue(range);
+				totalRangeSizes += range;
+				if (range < min) {
+					min = range;
+					minStart = classBounds[i - 1];
+					minEnd = classBounds[i];
+				} else if (range > max) {
+					max = range;
+					maxStart = classBounds[i - 1];
+					maxEnd = classBounds[i];
+				}
+			}
+			System.out.print("[" + i + ": " + classBounds[i] + "], ");
+		}
+		System.out.println("[" + (classBounds.length - 1) + ", " + classBounds[classBounds.length - 1] + "]");
+		System.out.println("Min Range: " + min + " [" + minStart + ", " + minEnd + "]; Max Range: " + max + " [" + maxStart + ", " + maxEnd + "]");
+		System.out.println("Average Range Size: " + (totalRangeSizes / classBounds.length + 1));
+		System.out.println(statistics);
 	}
 }

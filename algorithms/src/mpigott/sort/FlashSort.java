@@ -23,19 +23,19 @@ public class FlashSort {
 			min = Integer.MAX_VALUE;
 			max = Integer.MIN_VALUE;
 			listSize = 0;
-			origClassBounds = null;
-			currClassBounds = null;
-			cycleLeader = 0;
+			classUpperBounds = null;
+			currInsertIndex = null;
+			cycleLeaderIndex = 0;
 			cycleLeaderClass = 0;
 		}
 
 		int min;
 		int max;
 		int listSize;
-		int[] origClassBounds;
-		int[] currClassBounds;
+		int[] classUpperBounds;
+		int[] currInsertIndex;
 		int numClasses;
-		int cycleLeader;
+		int cycleLeaderIndex;
 		int cycleLeaderClass;
 	}
 
@@ -69,45 +69,45 @@ public class FlashSort {
 			state.numClasses = (int) (max - min + 1.0);
 		}
 
-		state.origClassBounds = new int[state.numClasses];
-		state.currClassBounds = new int[state.numClasses];
+		state.classUpperBounds = new int[state.numClasses];
+		state.currInsertIndex = new int[state.numClasses];
 
 		// Step 2: Define where each class will end.
 		final int classSize = state.listSize / state.numClasses;
 		for (int classNum = 1; classNum < state.numClasses; ++classNum) {
-			state.origClassBounds[classNum - 1] = (classSize * classNum - 1);
-			state.currClassBounds[classNum - 1] = (classSize * classNum - 1);
+			state.classUpperBounds[classNum - 1] = (classSize * classNum - 1);
+			state.currInsertIndex[classNum - 1] = (classSize * classNum - 1);
 		}
-		state.currClassBounds[state.numClasses - 1] = (state.listSize - 1); // Last class goes to the end of the array.
-		state.origClassBounds[state.numClasses - 1] = (state.listSize - 1);
+		state.currInsertIndex[state.numClasses - 1] = (state.listSize - 1); // Last class goes to the end of the array.
+		state.classUpperBounds[state.numClasses - 1] = (state.listSize - 1);
 
 		// Step 3: Classify and swap until the first class is full.
 		int element = 0;
 		int newLocation = -1;
 
-		while (state.cycleLeader < state.listSize) {
+		while (state.cycleLeaderIndex < state.listSize) {
 			// Find the next location where the element is in the wrong class.
-			for (; state.cycleLeader < state.listSize; ++state.cycleLeader) {
-				final int classification = classify(state, input.get(state.cycleLeader));
+			for (; state.cycleLeaderIndex < state.listSize; ++state.cycleLeaderIndex) {
+				final int classification = classify(state, input.get(state.cycleLeaderIndex));
 
 				final int lowerBound = getLowerBound(state, classification);
 
-				final int upperBound = state.origClassBounds[classification];
+				final int upperBound = state.classUpperBounds[classification];
 
-				if ((lowerBound > state.cycleLeader) || (upperBound < state.cycleLeader)) {
+				if ((lowerBound > state.cycleLeaderIndex) || (upperBound < state.cycleLeaderIndex)) {
 					// Found new cycle leader.
-					state.cycleLeaderClass = getClassOfIndex(state, state.cycleLeader);
+					state.cycleLeaderClass = getClassOfIndex(state, state.cycleLeaderIndex);
 					break;
 				}
 			}
 
-			if (state.cycleLeader >= state.listSize) {
+			if (state.cycleLeaderIndex >= state.listSize) {
 				break;
 			}
 
-			element = input.get(state.cycleLeader).intValue();
+			element = input.get(state.cycleLeaderIndex).intValue();
 
-			while (state.cycleLeader != newLocation) {
+			while (state.cycleLeaderIndex != newLocation) {
 				final int classification = classify(state, element);
 
 				newLocation = getNextLocation(state, classification);
@@ -119,10 +119,10 @@ public class FlashSort {
 				element = evicted;
 			}
 
-			++state.cycleLeader;
+			++state.cycleLeaderIndex;
 		}
 
-		return state.origClassBounds;
+		return state.classUpperBounds;
 	}
 
 	private static void throwInvalidInputException(int index) {
@@ -133,39 +133,43 @@ public class FlashSort {
 		final double numClasses = state.numClasses;
 		final double min = state.min;
 		final double max = state.max;
+		int classification = (int)(numClasses*(element - min)/(max - min));
+		if (classification == numClasses) {
+			--classification;
+		}
 
-		return (int)((numClasses - 1.0)*(element - min)/(max - min));
+		return classification; //(int)((numClasses-1.0)*(element - min)/(max - min)); // classification;
 	}
 
 	private static int getLowerBound(State state, int classification) {
-		return (classification == 0) ? 0 : state.origClassBounds[classification - 1] + 1;
+		return (classification == 0) ? 0 : state.classUpperBounds[classification - 1] + 1;
 	}
 
 	private static int getNextLocation(State state, int classification) {
-		int location = state.currClassBounds[classification];
+		int location = state.currInsertIndex[classification];
 
-		int origLowerBound = getLowerBound(state, classification);
-		if (location < origLowerBound) {
+		int classLowerBound = getLowerBound(state, classification);
+		if (location < classLowerBound) {
 			/* If the current class is full, we should re-classify in the direction of the cycle class.
 			 * This way, if our neighbors are also full, they will also re-classify towards the cycle leader,
 			 * until the cycle leader is reached, ending the cycle.
 			 */
 			if (classification < state.cycleLeaderClass) {
-				++state.origClassBounds[classification];
-				location = state.origClassBounds[classification];
-				if (state.currClassBounds[classification + 1] < state.origClassBounds[classification]) {
-					state.currClassBounds[classification + 1] = state.origClassBounds[classification];
+				++state.classUpperBounds[classification];
+				location = state.classUpperBounds[classification];
+				if (state.currInsertIndex[classification + 1] < state.classUpperBounds[classification]) {
+					state.currInsertIndex[classification + 1] = state.classUpperBounds[classification];
 				}
 			} else if (classification > state.cycleLeaderClass) {
-				location = state.currClassBounds[classification];
-				--state.currClassBounds[classification];
-				state.origClassBounds[classification - 1] = state.currClassBounds[classification];
+				location = state.currInsertIndex[classification];
+				--state.currInsertIndex[classification];
+				state.classUpperBounds[classification - 1] = state.currInsertIndex[classification];
 			} else {
 				// We're in the same class as the cycle leader; use its position.
-				location = state.cycleLeader;
+				location = state.cycleLeaderIndex;
 			}
 		} else {
-			--state.currClassBounds[classification];
+			--state.currInsertIndex[classification];
 		}
 
 		return location;
@@ -173,7 +177,7 @@ public class FlashSort {
 
 	private static int getClassOfIndex(State state, int index) {
 		// Returns the index of the first element in the array greater than the key.
-		int classOfPosition = Arrays.binarySearch(state.origClassBounds, index);
+		int classOfPosition = Arrays.binarySearch(state.classUpperBounds, index);
 		if (classOfPosition < 0) {
 			classOfPosition = (classOfPosition + 1) * -1;
 		}
