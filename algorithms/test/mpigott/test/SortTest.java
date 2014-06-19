@@ -7,8 +7,6 @@ import java.util.Random;
 
 import mpigott.sort.FlashSort;
 
-import org.apache.commons.math3.stat.descriptive.SummaryStatistics;
-import org.junit.Ignore;
 import org.junit.Test;
 
 /**
@@ -42,11 +40,11 @@ public class SortTest {
 		checkInput(input, classBounds, copy, 50);
 	}
 
-	@Test //@Ignore
+	@Test
 	public void randomFlashSortTest() {
 		ArrayList<Integer> input = createRandomInput(1000, 2000);
 		ArrayList<Integer> copy = (ArrayList<Integer>) input.clone();
-		int numClasses = 420; // Recommendation is n*0.42
+		int numClasses = 40; // Recommendation is n*0.42
 		int[] classBounds = null;
 		try {
 			classBounds = FlashSort.sort(input, numClasses);
@@ -54,7 +52,6 @@ public class SortTest {
 			re.printStackTrace();
 		}
 		checkInput(input, classBounds, copy, numClasses);
-		printClassSizes(classBounds);
 	}
 
 	@Test
@@ -244,39 +241,4 @@ public class SortTest {
 		System.out.println("checkInput(input, classBounds);");
 	}
 
-	private void printClassSizes(int[] classBounds) {
-		int min = (classBounds[classBounds.length - 1] - classBounds[classBounds.length - 2]);
-		int minStart = classBounds.length - 2;
-		int minEnd = classBounds.length - 1;
-
-		int max = min;
-		int maxStart = minStart;
-		int maxEnd = maxStart;
-
-		int totalRangeSizes = min;
-		SummaryStatistics statistics = new SummaryStatistics();
-		statistics.addValue(min);
-
-		for (int i = 0; i < (classBounds.length - 1); ++i) {
-			if (i > 1) {
-				final int range = (classBounds[i] - classBounds[i - 1]);
-				statistics.addValue(range);
-				totalRangeSizes += range;
-				if (range < min) {
-					min = range;
-					minStart = classBounds[i - 1];
-					minEnd = classBounds[i];
-				} else if (range > max) {
-					max = range;
-					maxStart = classBounds[i - 1];
-					maxEnd = classBounds[i];
-				}
-			}
-			System.out.print("[" + i + ": " + classBounds[i] + "], ");
-		}
-		System.out.println("[" + (classBounds.length - 1) + ", " + classBounds[classBounds.length - 1] + "]");
-		System.out.println("Min Range: " + min + " [" + minStart + ", " + minEnd + "]; Max Range: " + max + " [" + maxStart + ", " + maxEnd + "]");
-		System.out.println("Average Range Size: " + (totalRangeSizes / classBounds.length + 1));
-		System.out.println(statistics);
-	}
 }

@@ -85,9 +85,16 @@ public class FlashSort {
 	 * minimum and maximum is larger than the number of classes, only (max - min + 1)
 	 * classes will be used.
 	 *
-	 * The recommended number of classes is (0.42 * input.size) if using serial insertion
-	 * sort as the second sorting algorithm.  If the second stage will be done in parallel,
-	 * then choose the number of processors / hyper-threads you have to do the work.
+	 * The original Dr. Dobbs article recommended the number of classes to be (0.43 * input.size)
+	 * if using serial insertion sort as the second sorting algorithm.  However, I found that a
+	 * smaller number of classes is better, to be followed by an N*log(N) algorithm.  For example,
+	 * with a list size of 1000 randomly-generated elements, a class size of 420 required ~38,000
+	 * moves to fill each class.  However, using 40 classes only required 1,651 moves to complete.
+	 * Adding in a secondary sort of 40*25*log(25), or 4644, brings the total computation to 6,295
+	 * moves.  1000*log(1000), in comparison, is 9,966.
+	 *
+	 * If the second stage will be done in parallel, choose the number of processors / hyper-threads
+	 * you have to do the work.
 	 *
 	 * @param input      The input array to bucket into classes.
 	 *
