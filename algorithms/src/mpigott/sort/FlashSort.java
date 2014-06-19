@@ -1,21 +1,60 @@
 package mpigott.sort;
 
-import java.util.Arrays;
 import java.util.List;
 
 /**
  * Implementation of Flash Sort.
  * http://www.drdobbs.com/database/the-flashsort1-algorithm/184410496
  *
- * June 16, 2014
+ * The key innovation behind flash sort is that if you have an evenly-distributed
+ * data set, you can create "classes" of sub-ranges of equal size - knowing only
+ * the global maximum and minimum - and place each element into their appropriate
+ * class in O(N) time, in-place.  The algorithm is not stable.
  *
- * Status: Broken and I don't know why.
+ * Once all of the elements have been placed, each class can be sorted using a
+ * standard sorting algorithm (insertion sort is described, but any will do).
+ *
+ * The challenge is in the edge cases.  If more elements go in a class than the
+ * class was previously allocated for, the class needs to expand in some way.
+ *
+ * An existing Java implementation ( http://home.westman.wave.ca/~rhenry/sort/src/FlashSortAlgorithm.java )
+ * works around this by walking the array once, calculating all of the class sizes, and
+ * splitting the ranges before walking the list again, and moving the elements on the second
+ * pass.
+ *
+ * My implementation expands the class sizes dynamically, shortening the neighboring
+ * class sizes.  Cascading is also handled, so if a neighboring class is moved into
+ * its neighbor's class, both are resized accordingly.  And so on.
+ *
+ * The flash sort algorithm works by defining a "cycle leader" - the first element in
+ * the list that is not in the correct class.  The cycle leader is moved to its correct
+ * class, evicting an existing item - which gets moved to its class, and so on.  Once
+ * the cycle leader is replaced, the cycle stops - and we search for the next element
+ * in the list that is in the wrong place.
+ *
+ * When we expand a class, we always expand in the direction of the cycle leader.  That
+ * is the only space in the array that is guaranteed to be unfilled.  If we expand into
+ * a neighbor, we evict the element on the border.  Since we always expand in the direction
+ * of the cycle leader, that element will be placed on the opposite end of the neighbor's
+ * class, expanding it, and so on, until we reach the cycle leader, ending the cycle.
+ *
+ * This implementation is also completely thread-safe, provided the same input array is not
+ * used concurrently with another algorithm (or itself).  This is an in-place sort, after all.
+ *
+ * More information can be found in the linked Dr. Dobbs article.
+ *
+ * June 16 - 19, 2014
  *
  * @author Mike Pigott
  * @version 1.0
  */
 public class FlashSort {
 
+	/* Represents the current state of the algorithm.
+	 * Passing this around allows flash sort to have
+	 * no side effects, and allows the algorithm to be
+	 * thread safe.
+	 */
 	private static final class State {
 
 		public State(int classCount) {
@@ -37,6 +76,27 @@ public class FlashSort {
 		int cycleLeaderIndex;
 	}
 
+	/**
+	 * Sorts the input array into the provided number of classes in O(N) time, in-place,
+	 * unstably.  The upper bounds of all of the classes is returned, allowing for a
+	 * separate sorting algorithm to be conducted on each bucket, possibly in parallel.
+	 *
+	 * The number of classes is an upper bound.  If the range between the global
+	 * minimum and maximum is larger than the number of classes, only (max - min + 1)
+	 * classes will be used.
+	 *
+	 * The recommended number of classes is (0.42 * input.size) if using serial insertion
+	 * sort as the second sorting algorithm.  If the second stage will be done in parallel,
+	 * then choose the number of processors / hyper-threads you have to do the work.
+	 *
+	 * @param input      The input array to bucket into classes.
+	 *
+	 * @param numClasses The maximum number of classes to sort the input into, or <code>null</code>
+	 *                   if either the array has fewer than 2 elements, or fewer than 2 classes is
+	 *                   requested.
+	 *
+	 * @return           The upper bounds of each class, in increasing order.
+	 */
 	public static int[] sort(List<Integer> input, int numClasses) {
 		if ((input == null) || input.isEmpty() || (input.size() < 2) || (numClasses < 2)) {
 			return null;
@@ -49,7 +109,7 @@ public class FlashSort {
 			Integer value = input.get(index);
 
 			if (value == null) {
-				throwInvalidInputException(index);
+				throw new IllegalArgumentException("Input list cannot contain null elements.  The element at index " + index + " is null.");
 			}
 
 			if (value.compareTo(state.min) < 0) {
@@ -122,10 +182,10 @@ public class FlashSort {
 		return state.classUpperBounds;
 	}
 
-	private static void throwInvalidInputException(int index) {
-		throw new IllegalArgumentException("Input list cannot contain null elements.  The element at index " + index + " is null.");
-	}
-
+	/* Performs the classification.  This is slightly different from the algorithm
+	 * in the original Dr. Dobbs article, but in limited testing I found the standard
+	 * deviation on the resulting class sizes to be smaller than when using the original.
+	 */
 	private static int classify(State state, double element) {
 		final double numClasses = state.numClasses;
 		final double min = state.min;
@@ -138,10 +198,30 @@ public class FlashSort {
 		return classification;
 	}
 
+	/* This determines the lower bound of any class.  This is the lowest element in the
+	 * array that could be inserted into without affecting the next lower neighbor.
+	 */
 	private static int getLowerBound(State state, int classification) {
 		return (classification == 0) ? 0 : state.classUpperBounds[classification - 1] + 1;
 	}
 
+	/* This is the most complicated part of the algorithm: determining the next location
+	 * to place the current element into.  At the start, we estimated the upper bounds of
+	 * each class (state.classUpperBounds), and as we insert elements, we move that value
+	 * downward (state.currInsertIndex).  If we ever try to insert into the next-lowest
+	 * class, it means that the class is full, and we need to expand it.
+	 *
+	 * We always expand in the direction of the cycle leader.  As described in the class-
+	 * level documentation, this allows us to guarantee that we will eventually reach an
+	 * an unclassified position in the array (the cycle leader itself).
+	 *
+	 * When we expand our class, we also need to shrink the affected neighboring class.
+	 * The algorithm will handle re-classifying the neighbor automatically, as we evict
+	 * the nearest element in that neighbor.
+	 *
+	 * If that neighboring class is empty, we expand into its neighbor, and likewise we
+	 * need to adjust both.  And so on down the line.
+	 */
 	private static int getNextLocation(State state, int classification) {
 		int location = state.currInsertIndex[classification];
 
@@ -154,6 +234,8 @@ public class FlashSort {
 			if (location < state.cycleLeaderIndex) {
 				++state.classUpperBounds[classification];
 				location = state.classUpperBounds[classification];
+
+				// Shrink upper neighbor(s).
 				int currClass = classification;
 				int nextClass = classification + 1;
 				while ((nextClass < state.numClasses) && (state.currInsertIndex[nextClass] < state.classUpperBounds[currClass])) {
@@ -168,6 +250,7 @@ public class FlashSort {
 				location = state.currInsertIndex[classification];
 				--state.currInsertIndex[classification];
 
+				// Shrink lower neighbor(s).
 				int currClass = classification;
 				int prevClass = classification - 1;
 				while ((prevClass >= 0) && (state.classUpperBounds[prevClass] > state.currInsertIndex[currClass])) {
@@ -182,12 +265,6 @@ public class FlashSort {
 
 		} else {
 			--state.currInsertIndex[classification];
-		}
-
-		for (int rangeIter = 1; rangeIter < state.classUpperBounds.length; ++rangeIter) {
-			if (state.classUpperBounds[rangeIter] < state.classUpperBounds[rangeIter - 1]) {
-				throw new IllegalStateException("Upper bound of class " + rangeIter + " (" + state.classUpperBounds[rangeIter] + ") is less than upper bound of previous class " + (rangeIter - 1) + " (" + state.classUpperBounds[rangeIter - 1] + ") after defining a new location of " + location + " for class " + classification + ".");
-			}
 		}
 
 		return location;

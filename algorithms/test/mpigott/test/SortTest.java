@@ -44,7 +44,7 @@ public class SortTest {
 
 	@Test //@Ignore
 	public void randomFlashSortTest() {
-		ArrayList<Integer> input = createRandomInput(1000, 500);
+		ArrayList<Integer> input = createRandomInput(1000, 2000);
 		ArrayList<Integer> copy = (ArrayList<Integer>) input.clone();
 		int numClasses = 420; // Recommendation is n*0.42
 		int[] classBounds = null;
