@@ -26,7 +26,6 @@ public class FlashSort {
 			classUpperBounds = null;
 			currInsertIndex = null;
 			cycleLeaderIndex = 0;
-			cycleLeaderClass = 0;
 		}
 
 		int min;
@@ -36,7 +35,6 @@ public class FlashSort {
 		int[] currInsertIndex;
 		int numClasses;
 		int cycleLeaderIndex;
-		int cycleLeaderClass;
 	}
 
 	public static int[] sort(List<Integer> input, int numClasses) {
@@ -96,7 +94,6 @@ public class FlashSort {
 
 				if ((lowerBound > state.cycleLeaderIndex) || (upperBound < state.cycleLeaderIndex)) {
 					// Found new cycle leader.
-					state.cycleLeaderClass = getClassOfIndex(state, state.cycleLeaderIndex);
 					break;
 				}
 			}
@@ -138,7 +135,7 @@ public class FlashSort {
 			--classification;
 		}
 
-		return classification; //(int)((numClasses-1.0)*(element - min)/(max - min)); // classification;
+		return classification;
 	}
 
 	private static int getLowerBound(State state, int classification) {
@@ -150,37 +147,49 @@ public class FlashSort {
 
 		int classLowerBound = getLowerBound(state, classification);
 		if (location < classLowerBound) {
-			/* If the current class is full, we should re-classify in the direction of the cycle class.
+			/* If the current class is full, we should re-classify in the direction of the cycle leader.
 			 * This way, if our neighbors are also full, they will also re-classify towards the cycle leader,
 			 * until the cycle leader is reached, ending the cycle.
 			 */
-			if (classification < state.cycleLeaderClass) {
+			if (location < state.cycleLeaderIndex) {
 				++state.classUpperBounds[classification];
 				location = state.classUpperBounds[classification];
-				if (state.currInsertIndex[classification + 1] < state.classUpperBounds[classification]) {
-					state.currInsertIndex[classification + 1] = state.classUpperBounds[classification];
+				int currClass = classification;
+				int nextClass = classification + 1;
+				while ((nextClass < state.numClasses) && (state.currInsertIndex[nextClass] < state.classUpperBounds[currClass])) {
+					state.currInsertIndex[nextClass] = state.classUpperBounds[currClass];
+					if (state.currInsertIndex[nextClass] > state.classUpperBounds[nextClass]) {
+						state.classUpperBounds[nextClass] = state.currInsertIndex[nextClass];
+					}
+					++currClass;
+					++nextClass;
 				}
-			} else if (classification > state.cycleLeaderClass) {
+			} else if (location > state.cycleLeaderIndex) {
 				location = state.currInsertIndex[classification];
 				--state.currInsertIndex[classification];
-				state.classUpperBounds[classification - 1] = state.currInsertIndex[classification];
-			} else {
-				// We're in the same class as the cycle leader; use its position.
-				location = state.cycleLeaderIndex;
+
+				int currClass = classification;
+				int prevClass = classification - 1;
+				while ((prevClass >= 0) && (state.classUpperBounds[prevClass] > state.currInsertIndex[currClass])) {
+					state.classUpperBounds[prevClass] = state.currInsertIndex[currClass];
+					if (state.currInsertIndex[prevClass] > state.classUpperBounds[prevClass]) {
+						state.currInsertIndex[prevClass] = state.classUpperBounds[prevClass];
+					}
+					--prevClass;
+					--currClass;
+				}
 			}
+
 		} else {
 			--state.currInsertIndex[classification];
 		}
 
-		return location;
-	}
-
-	private static int getClassOfIndex(State state, int index) {
-		// Returns the index of the first element in the array greater than the key.
-		int classOfPosition = Arrays.binarySearch(state.classUpperBounds, index);
-		if (classOfPosition < 0) {
-			classOfPosition = (classOfPosition + 1) * -1;
+		for (int rangeIter = 1; rangeIter < state.classUpperBounds.length; ++rangeIter) {
+			if (state.classUpperBounds[rangeIter] < state.classUpperBounds[rangeIter - 1]) {
+				throw new IllegalStateException("Upper bound of class " + rangeIter + " (" + state.classUpperBounds[rangeIter] + ") is less than upper bound of previous class " + (rangeIter - 1) + " (" + state.classUpperBounds[rangeIter - 1] + ") after defining a new location of " + location + " for class " + classification + ".");
+			}
 		}
-		return classOfPosition;
+
+		return location;
 	}
 }
