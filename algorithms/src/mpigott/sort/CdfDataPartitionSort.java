@@ -137,14 +137,13 @@ public class CdfDataPartitionSort {
 			 *  of the cell.  The calculation assumes a uniform distribution 
 			 *  within each cell."
 			 *
-			 * We want the integral of y = mx + b where b is the cdf of the
+			 * This sounds like we want y = mx + b where b is the cdf of the
 			 * previous cell, m is the slope calculated above, and x is the
-			 * current value.  Since this is a triangle, we need 0.5 * y * x.
+			 * current value.
 			 *
 			 * I think.  It's worth a shot.
 			 */
-			final double y = slope * value - prevCdf;
-			final double currCdf = 0.5 * y * value + prevCdf;
+			final double currCdf = slope * value + prevCdf;
 
 			final int bucketNum = (int) Math.ceil(currCdf * numCells);
 			// TODO: Confirm this bucket num is sane.

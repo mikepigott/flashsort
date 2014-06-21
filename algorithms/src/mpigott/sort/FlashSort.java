@@ -55,20 +55,20 @@ public class FlashSort {
 	 * no side effects, and allows the algorithm to be
 	 * thread safe.
 	 */
-	private static final class State {
+	private static final class State<T extends Element<U>, U> {
 
 		public State(int classCount) {
 			numClasses = classCount;
-			min = Integer.MAX_VALUE;
-			max = Integer.MIN_VALUE;
+			min = null;
+			max = null;
 			listSize = 0;
 			classUpperBounds = null;
 			currInsertIndex = null;
 			cycleLeaderIndex = 0;
 		}
 
-		int min;
-		int max;
+		T min;
+		T max;
 		int listSize;
 		int[] classUpperBounds;
 		int[] currInsertIndex;
@@ -104,34 +104,35 @@ public class FlashSort {
 	 *
 	 * @return           The upper bounds of each class, in increasing order.
 	 */
-	public static int[] sort(List<Integer> input, int numClasses) {
+	public static <T extends Element<U>, U> int[] sort(List<T> input, int numClasses) {
 		if ((input == null) || input.isEmpty() || (input.size() < 2) || (numClasses < 2)) {
 			return null;
 		}
 
-		State state = new State(numClasses);
+		State<T, U> state = new State<T, U>(numClasses);
 
 		// Step 1: Determine Max, Min, and Size.
-		for (int index = 0; index < input.size(); ++index) {
-			Integer value = input.get(index);
+		state.min = input.get(0);
+		state.max = input.get(0);
+
+		for (int index = 1; index < input.size(); ++index) {
+			T value = input.get(index);
 
 			if (value == null) {
 				throw new IllegalArgumentException("Input list cannot contain null elements.  The element at index " + index + " is null.");
 			}
 
 			if (value.compareTo(state.min) < 0) {
-				state.min = value.intValue();
+				state.min = value;
 			} else if (value.compareTo(state.max) > 0) {
-				state.max = value.intValue();
+				state.max = value;
 			}
 
 			++state.listSize;
 		}
 
-		if ((state.max - state.min) < state.numClasses) {
-			final double min = state.min;
-			final double max = state.max;
-			state.numClasses = (int) (max - min + 1.0);
+		if ((state.max.distance(state.min)) < state.numClasses) {
+			state.numClasses = (int) (state.max.distance(state.min) + 1.0);
 		}
 
 		state.classUpperBounds = new int[state.numClasses];
@@ -147,7 +148,7 @@ public class FlashSort {
 		state.classUpperBounds[state.numClasses - 1] = (state.listSize - 1);
 
 		// Step 3: Classify and swap until the first class is full.
-		int element = 0;
+		T element = null;
 		int newLocation = -1;
 
 		while (state.cycleLeaderIndex < state.listSize) {
@@ -169,14 +170,14 @@ public class FlashSort {
 				break;
 			}
 
-			element = input.get(state.cycleLeaderIndex).intValue();
+			element = input.get(state.cycleLeaderIndex);
 
 			while (state.cycleLeaderIndex != newLocation) {
 				final int classification = classify(state, element);
 
 				newLocation = getNextLocation(state, classification);
 
-				final int evicted = input.get(newLocation).intValue();
+				final T evicted = input.get(newLocation);
 
 				input.set(newLocation, element);
 
@@ -193,11 +194,10 @@ public class FlashSort {
 	 * in the original Dr. Dobbs article, but in limited testing I found the standard
 	 * deviation on the resulting class sizes to be smaller than when using the original.
 	 */
-	private static int classify(State state, double element) {
+	private static <T extends Element<U>, U> int classify(State<T, U> state, T element) {
 		final double numClasses = state.numClasses;
-		final double min = state.min;
-		final double max = state.max;
-		int classification = (int)(numClasses*(element - min)/(max - min));
+		int classification =
+				(int)(numClasses*(element.distance(state.min))/(state.max.distance(state.min)));
 		if (classification == numClasses) {
 			--classification;
 		}
@@ -208,7 +208,7 @@ public class FlashSort {
 	/* This determines the lower bound of any class.  This is the lowest element in the
 	 * array that could be inserted into without affecting the next lower neighbor.
 	 */
-	private static int getLowerBound(State state, int classification) {
+	private static <T extends Element<U>, U> int getLowerBound(State<T, U> state, int classification) {
 		return (classification == 0) ? 0 : state.classUpperBounds[classification - 1] + 1;
 	}
 
@@ -229,7 +229,7 @@ public class FlashSort {
 	 * If that neighboring class is empty, we expand into its neighbor, and likewise we
 	 * need to adjust both.  And so on down the line.
 	 */
-	private static int getNextLocation(State state, int classification) {
+	private static <T extends Element<U>, U> int getNextLocation(State<T, U> state, int classification) {
 		int location = state.currInsertIndex[classification];
 
 		int classLowerBound = getLowerBound(state, classification);
