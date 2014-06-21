@@ -24,5 +24,9 @@ public class NumericElement<T extends Number & Comparable<T>> implements Element
 		return value.doubleValue() - other.getValue().doubleValue();
 	}
 
+	public String toString() {
+		return (value == null) ? "null" : value.toString();
+	}
+
 	private T value;
 }
