@@ -59,16 +59,12 @@ public class FlashSort {
 
 		public State(int classCount) {
 			numClasses = classCount;
-			min = null;
-			max = null;
 			listSize = 0;
 			classUpperBounds = null;
 			currInsertIndex = null;
 			cycleLeaderIndex = 0;
 		}
 
-		T min;
-		T max;
 		int listSize;
 		int[] classUpperBounds;
 		int[] currInsertIndex;
@@ -109,36 +105,17 @@ public class FlashSort {
 			return null;
 		}
 
-		State<T, U> state = new State<T, U>(numClasses);
+		FlashSortPartitionFunction<T, U> partitionFunction =
+			new FlashSortPartitionFunction<T, U>(input, numClasses);
 
-		// Step 1: Determine Max, Min, and Size.
-		state.min = input.get(0);
-		state.max = input.get(0);
+		State<T, U> state = new State<T, U>(partitionFunction.getNumClasses());
 
-		for (int index = 1; index < input.size(); ++index) {
-			T value = input.get(index);
-
-			if (value == null) {
-				throw new IllegalArgumentException("Input list cannot contain null elements.  The element at index " + index + " is null.");
-			}
-
-			if (value.compareTo(state.min) < 0) {
-				state.min = value;
-			} else if (value.compareTo(state.max) > 0) {
-				state.max = value;
-			}
-
-			++state.listSize;
-		}
-
-		if ((state.max.distance(state.min)) < state.numClasses) {
-			state.numClasses = (int) (state.max.distance(state.min) + 1.0);
-		}
-
+		state.listSize = input.size();
 		state.classUpperBounds = new int[state.numClasses];
 		state.currInsertIndex = new int[state.numClasses];
 
 		// Step 2: Define where each class will end.
+		// TODO: Much of this information is decided by the partition function.
 		final int classSize = state.listSize / state.numClasses;
 		for (int classNum = 1; classNum < state.numClasses; ++classNum) {
 			state.classUpperBounds[classNum - 1] = (classSize * classNum - 1);
@@ -154,7 +131,7 @@ public class FlashSort {
 		while (state.cycleLeaderIndex < state.listSize) {
 			// Find the next location where the element is in the wrong class.
 			for (; state.cycleLeaderIndex < state.listSize; ++state.cycleLeaderIndex) {
-				final int classification = classify(state, input.get(state.cycleLeaderIndex));
+				final int classification = partitionFunction.getClass(input.get(state.cycleLeaderIndex));
 
 				final int lowerBound = getLowerBound(state, classification);
 
@@ -173,7 +150,7 @@ public class FlashSort {
 			element = input.get(state.cycleLeaderIndex);
 
 			while (state.cycleLeaderIndex != newLocation) {
-				final int classification = classify(state, element);
+				final int classification = partitionFunction.getClass(element);
 
 				newLocation = getNextLocation(state, classification);
 
@@ -188,21 +165,6 @@ public class FlashSort {
 		}
 
 		return state.classUpperBounds;
-	}
-
-	/* Performs the classification.  This is slightly different from the algorithm
-	 * in the original Dr. Dobbs article, but in limited testing I found the standard
-	 * deviation on the resulting class sizes to be smaller than when using the original.
-	 */
-	private static <T extends Element<U>, U> int classify(State<T, U> state, T element) {
-		final double numClasses = state.numClasses;
-		int classification =
-				(int)(numClasses*(element.distance(state.min))/(state.max.distance(state.min)));
-		if (classification == numClasses) {
-			--classification;
-		}
-
-		return classification;
 	}
 
 	/* This determines the lower bound of any class.  This is the lowest element in the
