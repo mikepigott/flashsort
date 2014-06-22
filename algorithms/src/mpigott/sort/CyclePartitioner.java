@@ -48,7 +48,7 @@ import java.util.List;
  * @author Mike Pigott
  * @version 1.0
  */
-public class FlashSort {
+public class CyclePartitioner {
 
 	/* Represents the current state of the algorithm.
 	 * Passing this around allows flash sort to have
@@ -100,7 +100,7 @@ public class FlashSort {
 	 *
 	 * @return           The upper bounds of each class, in increasing order.
 	 */
-	public static <T extends Element<U>, U> int[] sort(List<T> input, PartitionFunction<T, U> partitionFunction) {
+	public static <T extends Element<U>, U> int[] partition(List<T> input, PartitionFunction<T, U> partitionFunction) {
 		if ((input == null) || input.isEmpty() || (input.size() < 2) || (partitionFunction.getNumClasses() < 2)) {
 			return null;
 		}

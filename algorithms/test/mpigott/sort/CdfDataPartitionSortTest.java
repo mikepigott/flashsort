@@ -78,6 +78,38 @@ public class CdfDataPartitionSortTest {
 		assertEquals(101, (int) statistics.getMax());
 	}
 
+	@Test
+	public void testPartitioning1() {
+		ArrayList<NumericElement<Double>> input = createNonRandomInput(10000, -50.0);
+
+		CdfPartitionFunction<NumericElement<Double>, Double> func =
+			new CdfPartitionFunction<NumericElement<Double>, Double>(input, 100, 0.05, 0.01);
+
+		int[] classBounds = CyclePartitioner.partition(input, func);
+
+		checkInput(input, classBounds);
+	}
+
+	@Test
+	public void testPartitioning2() {
+		ArrayList<NumericElement<Double>> input = createNonRandomInput(100000, -50.0);
+
+		CdfPartitionFunction<NumericElement<Double>, Double> func =
+			new CdfPartitionFunction<NumericElement<Double>, Double>(input, 100, 0.05, 0.01);
+
+		int[] classBounds = CyclePartitioner.partition(input, func);
+
+		// TODO: Fix checkInput(input, classBounds);
+		int prevBounds = 0;
+		SummaryStatistics statistics = new SummaryStatistics();
+		for (int i = 0; i < classBounds.length; ++i) {
+			statistics.addValue(classBounds[i] - prevBounds);
+			prevBounds = classBounds[i];
+		}
+		System.out.println(statistics);
+	}
+
+
 	private ArrayList<NumericElement<Double>> createNonRandomInput(int numElements, double min) {
 		ArrayList<NumericElement<Double>> input =
 				new ArrayList<NumericElement<Double>>(numElements);
@@ -107,5 +139,60 @@ public class CdfDataPartitionSortTest {
 		}
 
 		return statistics;
+	}
+
+	private void checkInput(ArrayList<NumericElement<Double>> output, int[] classBounds) {
+		assertNotNull(classBounds);
+
+		// Confirm the max value of a class is less than the min value of the next upper class.
+		double[] prevMinAndMax = getMinAndMax(output, classBounds, 0);
+		double[] currMinAndMax = null;
+
+		for (int i = 1; i < classBounds.length; ++i) {
+			currMinAndMax = getMinAndMax(output, classBounds, i);
+			final boolean isValid = prevMinAndMax[1] < currMinAndMax[0];
+			if (!isValid) {
+			}
+			assertTrue("Maximum of class " + (i - 1) + " (" + prevMinAndMax[1] + ") must be less than the min of class " + i + " (" + currMinAndMax[0] + ").", isValid);
+			prevMinAndMax = currMinAndMax;
+		}
+
+		// Confirm the ranges are valid.
+		for (int i = 1; i < classBounds.length; ++i) {
+			final int range = (classBounds[i] - classBounds[i - 1]);
+			if (range < 0) {
+				int startIndex = (i == 1) ? 0 : classBounds[i - 2] + 1;
+				int endIndex = classBounds[i - 1];
+				for (int indexInRange = startIndex; indexInRange < endIndex; ++indexInRange) {
+					if (indexInRange == classBounds[i]) {
+						System.out.print("[*] ");
+					}
+					System.out.print("[" + indexInRange + ": " + output.get(indexInRange) + "], ");
+				}
+				System.out.println("[**] [" + endIndex + ", " + output.get(endIndex) + "]");
+			}
+			assertTrue("The length of a class's (" + i + ") range (" + range + ") should never be negative. [" + classBounds[i - 1] + ", " + classBounds[i] + "]", range >= 0);
+		}
+	}
+
+	private double[] getMinAndMax(ArrayList<NumericElement<Double>> input, int[] classBounds, int classification) {
+		double[] minAndMax = new double[2];
+		minAndMax[0] = Double.POSITIVE_INFINITY;
+		minAndMax[1] = Double.NEGATIVE_INFINITY;
+
+		final int startPosition = (classification == 0) ? 0 : (classBounds[classification - 1] + 1);
+		final int endPosition = classBounds[classification];
+		int currValue = 0;
+
+		for (int i = startPosition; i <= endPosition; ++i) {
+			currValue = input.get(i).getValue().intValue();
+			if (currValue < minAndMax[0]) {
+				minAndMax[0] = currValue;
+			} else if (currValue > minAndMax[1]) {
+				minAndMax[1] = currValue;
+			}
+		}
+
+		return minAndMax;
 	}
 }
