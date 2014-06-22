@@ -12,7 +12,7 @@ import org.apache.commons.math3.special.Erf;
  * @author  Mike Pigott
  * @version 1.0
  */
-public final class CdfPartitionFunction<T extends Element<U>, U> {
+public final class CdfPartitionFunction<T extends Element<U>, U> implements PartitionFunction<T, U> {
 
 	/* Returns m, the value used to determine the number of samples (s) for
 	 * a given confidence alpha in the equation: 
@@ -159,6 +159,10 @@ public final class CdfPartitionFunction<T extends Element<U>, U> {
 		final double currCdf = slope * x + prevCdf;
 
 		return (int) (currCdf * numCells);
+	}
+
+	public int getNumClasses() {
+		return (int) numCells;
 	}
 
 	private T min;

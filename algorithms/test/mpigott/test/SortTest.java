@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Random;
 
 import mpigott.sort.FlashSort;
+import mpigott.sort.FlashSortPartitionFunction;
 import mpigott.sort.NumericElement;
 
 import org.junit.Test;
@@ -29,7 +30,7 @@ public class SortTest {
 				input.add(new NumericElement<Integer>( new Integer(args[i]) ));
 			}
 
-			FlashSort.sort(input, Integer.parseInt(args[0]));
+			FlashSort.sort(input, new FlashSortPartitionFunction<NumericElement<Integer>, Integer>(input, Integer.parseInt(args[0])));
 		}
 	}
 
@@ -37,7 +38,7 @@ public class SortTest {
 	public void nonRandomFlashSortTest() {
 		ArrayList<NumericElement<Integer>> input = createNonRandomInput(500);
 		ArrayList<NumericElement<Integer>> copy = (ArrayList<NumericElement<Integer>>) input.clone();
-		final int[] classBounds = FlashSort.sort(input, 50);
+		final int[] classBounds = FlashSort.sort(input, new FlashSortPartitionFunction<NumericElement<Integer>, Integer>(input, 50));
 		checkInput(input, classBounds, copy, 50);
 	}
 
@@ -48,7 +49,7 @@ public class SortTest {
 		int numClasses = 40; // Recommendation is n*0.42
 		int[] classBounds = null;
 		try {
-			classBounds = FlashSort.sort(input, numClasses);
+			classBounds = FlashSort.sort(input, new FlashSortPartitionFunction<NumericElement<Integer>, Integer>(input, numClasses));
 		} catch (RuntimeException re) {
 			re.printStackTrace();
 		}
@@ -61,7 +62,7 @@ public class SortTest {
 		ArrayList<NumericElement<Integer>> copy = (ArrayList<NumericElement<Integer>>) input.clone();
 		int[] classBounds = null;
 		try {
-			classBounds = FlashSort.sort(input, 100);
+			classBounds = FlashSort.sort(input, new FlashSortPartitionFunction<NumericElement<Integer>, Integer>(input, 100));
 		} catch (RuntimeException re) {
 			printInputCode(input, 100);
 		}
@@ -77,7 +78,7 @@ public class SortTest {
 			input.add( new NumericElement<Integer>(inputArray[i]) );
 		}
 		ArrayList<NumericElement<Integer>> copy = (ArrayList<NumericElement<Integer>>) input.clone();
-		final int[] classBounds = FlashSort.sort(input, numClasses);
+		final int[] classBounds = FlashSort.sort(input, new FlashSortPartitionFunction<NumericElement<Integer>, Integer>(input, numClasses));
 		checkInput(input, classBounds, copy, numClasses);
 	}
 
@@ -90,7 +91,7 @@ public class SortTest {
 			input.add(new NumericElement<Integer>(inputArray[i]));
 		}
 		ArrayList<NumericElement<Integer>> copy = (ArrayList<NumericElement<Integer>>) input.clone();
-		final int[] classBounds = FlashSort.sort(input, numClasses);
+		final int[] classBounds = FlashSort.sort(input, new FlashSortPartitionFunction<NumericElement<Integer>, Integer>(input, numClasses));
 		checkInput(input, classBounds, copy, numClasses);
 	}
 
@@ -103,7 +104,7 @@ public class SortTest {
 			input.add( new NumericElement<Integer>(inputArray[i]) );
 		}
 		ArrayList<NumericElement<Integer>> copy = (ArrayList<NumericElement<Integer>>) input.clone();
-		final int[] classBounds = FlashSort.sort(input, numClasses);
+		final int[] classBounds = FlashSort.sort(input, new FlashSortPartitionFunction<NumericElement<Integer>, Integer>(input, numClasses));
 		checkInput(input, classBounds, copy, numClasses);
 	}
 
@@ -116,7 +117,7 @@ public class SortTest {
 			input.add(new NumericElement<Integer>(inputArray[i]));
 		}
 		ArrayList<NumericElement<Integer>> copy = (ArrayList<NumericElement<Integer>>) input.clone();
-		final int[] classBounds = FlashSort.sort(input, numClasses);
+		final int[] classBounds = FlashSort.sort(input, new FlashSortPartitionFunction<NumericElement<Integer>, Integer>(input, numClasses));
 		checkInput(input, classBounds, copy, numClasses);
 	}
 
@@ -129,7 +130,7 @@ public class SortTest {
 			input.add(new NumericElement<Integer>(inputArray[i]));
 		}
 		ArrayList<NumericElement<Integer>> copy = (ArrayList<NumericElement<Integer>>) input.clone();
-		final int[] classBounds = FlashSort.sort(input, numClasses);
+		final int[] classBounds = FlashSort.sort(input, new FlashSortPartitionFunction<NumericElement<Integer>, Integer>(input, numClasses));
 		checkInput(input, classBounds, copy, numClasses);
 	}
 

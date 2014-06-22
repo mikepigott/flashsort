@@ -8,7 +8,7 @@ import java.util.List;
  * @author  Mike Pigott
  * @version 1.0
  */
-public class FlashSortPartitionFunction<T extends Element<U>, U> {
+public class FlashSortPartitionFunction<T extends Element<U>, U> implements PartitionFunction<T, U> {
 
 	public FlashSortPartitionFunction(List<T> input, int numClassesRequested) {
 		min = input.get(0);

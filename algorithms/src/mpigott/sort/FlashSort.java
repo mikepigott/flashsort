@@ -100,13 +100,10 @@ public class FlashSort {
 	 *
 	 * @return           The upper bounds of each class, in increasing order.
 	 */
-	public static <T extends Element<U>, U> int[] sort(List<T> input, int numClasses) {
-		if ((input == null) || input.isEmpty() || (input.size() < 2) || (numClasses < 2)) {
+	public static <T extends Element<U>, U> int[] sort(List<T> input, PartitionFunction<T, U> partitionFunction) {
+		if ((input == null) || input.isEmpty() || (input.size() < 2) || (partitionFunction.getNumClasses() < 2)) {
 			return null;
 		}
-
-		FlashSortPartitionFunction<T, U> partitionFunction =
-			new FlashSortPartitionFunction<T, U>(input, numClasses);
 
 		State<T, U> state = new State<T, U>(partitionFunction.getNumClasses());
 
@@ -115,7 +112,6 @@ public class FlashSort {
 		state.currInsertIndex = new int[state.numClasses];
 
 		// Step 2: Define where each class will end.
-		// TODO: Much of this information is decided by the partition function.
 		final int classSize = state.listSize / state.numClasses;
 		for (int classNum = 1; classNum < state.numClasses; ++classNum) {
 			state.classUpperBounds[classNum - 1] = (classSize * classNum - 1);
