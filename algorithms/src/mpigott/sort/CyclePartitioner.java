@@ -196,7 +196,23 @@ public class CyclePartitioner {
 			 * This way, if our neighbors are also full, they will also re-classify towards the cycle leader,
 			 * until the cycle leader is reached, ending the cycle.
 			 */
-			if (location < state.cycleLeaderIndex) {
+			if (location >= state.cycleLeaderIndex) {
+				--state.currInsertIndex[classification];
+
+				// Shrink lower neighbor(s).
+				int currClass = classification;
+				int prevClass = classification - 1;
+
+				while ((prevClass >= 0) && (state.classUpperBounds[prevClass] > state.currInsertIndex[currClass])) {
+					state.classUpperBounds[prevClass] = state.currInsertIndex[currClass];
+					if (state.currInsertIndex[prevClass] > state.classUpperBounds[prevClass]) {
+						state.currInsertIndex[prevClass] = state.classUpperBounds[prevClass];
+					}
+					--prevClass;
+					--currClass;
+				}
+
+			} else if (location < state.cycleLeaderIndex) {
 				++state.classUpperBounds[classification];
 				location = state.classUpperBounds[classification];
 
@@ -210,21 +226,6 @@ public class CyclePartitioner {
 					}
 					++currClass;
 					++nextClass;
-				}
-			} else if (location > state.cycleLeaderIndex) {
-				location = state.currInsertIndex[classification];
-				--state.currInsertIndex[classification];
-
-				// Shrink lower neighbor(s).
-				int currClass = classification;
-				int prevClass = classification - 1;
-				while ((prevClass >= 0) && (state.classUpperBounds[prevClass] > state.currInsertIndex[currClass])) {
-					state.classUpperBounds[prevClass] = state.currInsertIndex[currClass];
-					if (state.currInsertIndex[prevClass] > state.classUpperBounds[prevClass]) {
-						state.currInsertIndex[prevClass] = state.classUpperBounds[prevClass];
-					}
-					--prevClass;
-					--currClass;
 				}
 			}
 

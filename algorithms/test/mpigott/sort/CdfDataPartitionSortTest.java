@@ -4,9 +4,11 @@ import static org.junit.Assert.*;
 
 import java.util.ArrayList;
 import java.util.Map;
+import java.util.Random;
 import java.util.TreeMap;
 
 import org.apache.commons.math3.stat.descriptive.SummaryStatistics;
+import org.junit.Ignore;
 import org.junit.Test;
 
 public class CdfDataPartitionSortTest {
@@ -79,7 +81,7 @@ public class CdfDataPartitionSortTest {
 	}
 
 	@Test
-	public void testPartitioning1() {
+	public void testNonRandomPartitioning1() {
 		ArrayList<NumericElement<Double>> input = createNonRandomInput(10000, -50.0);
 
 		CdfPartitionFunction<NumericElement<Double>, Double> func =
@@ -87,11 +89,11 @@ public class CdfDataPartitionSortTest {
 
 		int[] classBounds = CyclePartitioner.partition(input, func);
 
-		checkInput(input, classBounds);
+		checkInput(input, func, classBounds);
 	}
 
 	@Test
-	public void testPartitioning2() {
+	public void testNonRandomPartitioning2() {
 		ArrayList<NumericElement<Double>> input = createNonRandomInput(100000, -50.0);
 
 		CdfPartitionFunction<NumericElement<Double>, Double> func =
@@ -99,16 +101,44 @@ public class CdfDataPartitionSortTest {
 
 		int[] classBounds = CyclePartitioner.partition(input, func);
 
-		// TODO: Fix checkInput(input, classBounds);
-		int prevBounds = 0;
-		SummaryStatistics statistics = new SummaryStatistics();
-		for (int i = 0; i < classBounds.length; ++i) {
-			statistics.addValue(classBounds[i] - prevBounds);
-			prevBounds = classBounds[i];
-		}
-		System.out.println(statistics);
+		checkInput(input, func, classBounds);
 	}
 
+	@Test
+	public void testRandomPartitioning1() {
+		ArrayList<NumericElement<Double>> input = createRandomInput(10000, 50.0, 300000.0);
+
+		CdfPartitionFunction<NumericElement<Double>, Double> func =
+			new CdfPartitionFunction<NumericElement<Double>, Double>(input, 100, 0.05, 0.01);
+
+		int[] classBounds = CyclePartitioner.partition(input, func);
+
+		checkInput(input, func, classBounds);
+	}
+
+	@Test
+	public void testRandomPartitioning2() {
+		ArrayList<NumericElement<Double>> input = createRandomInput(100000, -50.0, 250000.0);
+
+		CdfPartitionFunction<NumericElement<Double>, Double> func =
+			new CdfPartitionFunction<NumericElement<Double>, Double>(input, 512, 0.05, 0.0056);
+
+		int[] classBounds = CyclePartitioner.partition(input, func);
+
+		checkInput(input, func, classBounds);
+	}
+
+	@Test
+	public void testRandomPartitioning3() {
+		ArrayList<NumericElement<Double>> input = createRandomInput(1000000, -250000.0, 1250000.0);
+
+		CdfPartitionFunction<NumericElement<Double>, Double> func =
+			new CdfPartitionFunction<NumericElement<Double>, Double>(input, 4096, 0.05, 0.0056);
+
+		int[] classBounds = CyclePartitioner.partition(input, func);
+
+		checkInput(input, func, classBounds);
+	}
 
 	private ArrayList<NumericElement<Double>> createNonRandomInput(int numElements, double min) {
 		ArrayList<NumericElement<Double>> input =
@@ -116,6 +146,23 @@ public class CdfDataPartitionSortTest {
 
 		for (int i = 0; i < numElements; ++i) {
 			input.add(new NumericElement<Double>(min + i));
+		}
+
+		return input;
+	}
+
+	private ArrayList<NumericElement<Double>> createRandomInput(int numElems, double min, double max) {
+		ArrayList<NumericElement<Double>> input = new ArrayList<NumericElement<Double>>(numElems);
+		for (int i = 0; i < numElems; ++i) {
+			input.add(new NumericElement<Double>(Double.NEGATIVE_INFINITY));
+		}
+		Random random = new Random(System.currentTimeMillis());
+		for (int i = 0; i < numElems; ++i) {
+			int index = random.nextInt(numElems);
+			while (input.get(index % numElems).getValue() >= min) {
+				++index;
+			}
+			input.set(index % numElems, new NumericElement<Double>(random.nextDouble() * (max - min) + min));
 		}
 
 		return input;
@@ -141,18 +188,19 @@ public class CdfDataPartitionSortTest {
 		return statistics;
 	}
 
-	private void checkInput(ArrayList<NumericElement<Double>> output, int[] classBounds) {
+	private void checkInput(ArrayList<NumericElement<Double>> output, PartitionFunction<NumericElement<Double>, Double> func, int[] classBounds) {
 		assertNotNull(classBounds);
 
 		// Confirm the max value of a class is less than the min value of the next upper class.
 		double[] prevMinAndMax = getMinAndMax(output, classBounds, 0);
 		double[] currMinAndMax = null;
 
+		assertEquals("The element in the upper bound of the class 0 does not belong to class zero.", 0, func.getClass(output.get(classBounds[0])));
+
 		for (int i = 1; i < classBounds.length; ++i) {
+			assertEquals("The element in the upper bound of the class " + i + " does not belong to class " + i + ".", i, func.getClass(output.get(classBounds[i])));
 			currMinAndMax = getMinAndMax(output, classBounds, i);
-			final boolean isValid = prevMinAndMax[1] < currMinAndMax[0];
-			if (!isValid) {
-			}
+			final boolean isValid = prevMinAndMax[1] <= currMinAndMax[0];
 			assertTrue("Maximum of class " + (i - 1) + " (" + prevMinAndMax[1] + ") must be less than the min of class " + i + " (" + currMinAndMax[0] + ").", isValid);
 			prevMinAndMax = currMinAndMax;
 		}

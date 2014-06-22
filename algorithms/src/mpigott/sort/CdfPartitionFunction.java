@@ -126,6 +126,7 @@ public final class CdfPartitionFunction<T extends Element<U>, U> implements Part
 			cdf[cellIndex] = (sampleCountsPerCell[cellIndex] + 1.0) / sc + prevSi;
 			prevSi = cdf[cellIndex];
 		}
+
 	}
 
 	public int getClass(T value) {

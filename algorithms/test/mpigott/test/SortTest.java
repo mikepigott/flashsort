@@ -38,8 +38,9 @@ public class SortTest {
 	public void nonRandomFlashSortTest() {
 		ArrayList<NumericElement<Integer>> input = createNonRandomInput(500);
 		ArrayList<NumericElement<Integer>> copy = (ArrayList<NumericElement<Integer>>) input.clone();
-		final int[] classBounds = CyclePartitioner.partition(input, new FlashSortPartitionFunction<NumericElement<Integer>, Integer>(input, 50));
-		checkInput(input, classBounds, copy, 50);
+		FlashSortPartitionFunction<NumericElement<Integer>, Integer> func = new FlashSortPartitionFunction<NumericElement<Integer>, Integer>(input, 50);
+		final int[] classBounds = CyclePartitioner.partition(input, func);
+		checkInput(func, input, classBounds, copy, 50);
 	}
 
 	@Test
@@ -48,12 +49,13 @@ public class SortTest {
 		ArrayList<NumericElement<Integer>> copy = (ArrayList<NumericElement<Integer>>) input.clone();
 		int numClasses = 40; // Recommendation is n*0.42
 		int[] classBounds = null;
+		FlashSortPartitionFunction<NumericElement<Integer>, Integer> func = new FlashSortPartitionFunction<NumericElement<Integer>, Integer>(input, numClasses);
 		try {
-			classBounds = CyclePartitioner.partition(input, new FlashSortPartitionFunction<NumericElement<Integer>, Integer>(input, numClasses));
+			classBounds = CyclePartitioner.partition(input, func);
 		} catch (RuntimeException re) {
 			re.printStackTrace();
 		}
-		checkInput(input, classBounds, copy, numClasses);
+		checkInput(func, input, classBounds, copy, numClasses);
 	}
 
 	@Test
@@ -61,12 +63,13 @@ public class SortTest {
 		ArrayList<NumericElement<Integer>> input = createRandomInput(500, 50);
 		ArrayList<NumericElement<Integer>> copy = (ArrayList<NumericElement<Integer>>) input.clone();
 		int[] classBounds = null;
+		FlashSortPartitionFunction<NumericElement<Integer>, Integer> func = new FlashSortPartitionFunction<NumericElement<Integer>, Integer>(input, 100);
 		try {
-			classBounds = CyclePartitioner.partition(input, new FlashSortPartitionFunction<NumericElement<Integer>, Integer>(input, 100));
+			classBounds = CyclePartitioner.partition(input, func);
 		} catch (RuntimeException re) {
 			printInputCode(input, 100);
 		}
-		checkInput(input, classBounds, copy, 100);
+		checkInput(func, input, classBounds, copy, 100);
 	}
 
 	@Test
@@ -78,8 +81,9 @@ public class SortTest {
 			input.add( new NumericElement<Integer>(inputArray[i]) );
 		}
 		ArrayList<NumericElement<Integer>> copy = (ArrayList<NumericElement<Integer>>) input.clone();
-		final int[] classBounds = CyclePartitioner.partition(input, new FlashSortPartitionFunction<NumericElement<Integer>, Integer>(input, numClasses));
-		checkInput(input, classBounds, copy, numClasses);
+		FlashSortPartitionFunction<NumericElement<Integer>, Integer> func = new FlashSortPartitionFunction<NumericElement<Integer>, Integer>(input, numClasses);
+		final int[] classBounds = CyclePartitioner.partition(input, func);
+		checkInput(func, input, classBounds, copy, numClasses);
 	}
 
 	@Test
@@ -91,8 +95,9 @@ public class SortTest {
 			input.add(new NumericElement<Integer>(inputArray[i]));
 		}
 		ArrayList<NumericElement<Integer>> copy = (ArrayList<NumericElement<Integer>>) input.clone();
-		final int[] classBounds = CyclePartitioner.partition(input, new FlashSortPartitionFunction<NumericElement<Integer>, Integer>(input, numClasses));
-		checkInput(input, classBounds, copy, numClasses);
+		FlashSortPartitionFunction<NumericElement<Integer>, Integer> func = new FlashSortPartitionFunction<NumericElement<Integer>, Integer>(input, numClasses);
+		final int[] classBounds = CyclePartitioner.partition(input, func);
+		checkInput(func, input, classBounds, copy, numClasses);
 	}
 
 	@Test
@@ -104,8 +109,9 @@ public class SortTest {
 			input.add( new NumericElement<Integer>(inputArray[i]) );
 		}
 		ArrayList<NumericElement<Integer>> copy = (ArrayList<NumericElement<Integer>>) input.clone();
-		final int[] classBounds = CyclePartitioner.partition(input, new FlashSortPartitionFunction<NumericElement<Integer>, Integer>(input, numClasses));
-		checkInput(input, classBounds, copy, numClasses);
+		FlashSortPartitionFunction<NumericElement<Integer>, Integer> func = new FlashSortPartitionFunction<NumericElement<Integer>, Integer>(input, numClasses);
+		final int[] classBounds = CyclePartitioner.partition(input, func);
+		checkInput(func, input, classBounds, copy, numClasses);
 	}
 
 	@Test
@@ -117,8 +123,9 @@ public class SortTest {
 			input.add(new NumericElement<Integer>(inputArray[i]));
 		}
 		ArrayList<NumericElement<Integer>> copy = (ArrayList<NumericElement<Integer>>) input.clone();
-		final int[] classBounds = CyclePartitioner.partition(input, new FlashSortPartitionFunction<NumericElement<Integer>, Integer>(input, numClasses));
-		checkInput(input, classBounds, copy, numClasses);
+		FlashSortPartitionFunction<NumericElement<Integer>, Integer> func = new FlashSortPartitionFunction<NumericElement<Integer>, Integer>(input, numClasses);
+		final int[] classBounds = CyclePartitioner.partition(input, func);
+		checkInput(func, input, classBounds, copy, numClasses);
 	}
 
 	@Test
@@ -130,11 +137,12 @@ public class SortTest {
 			input.add(new NumericElement<Integer>(inputArray[i]));
 		}
 		ArrayList<NumericElement<Integer>> copy = (ArrayList<NumericElement<Integer>>) input.clone();
-		final int[] classBounds = CyclePartitioner.partition(input, new FlashSortPartitionFunction<NumericElement<Integer>, Integer>(input, numClasses));
-		checkInput(input, classBounds, copy, numClasses);
+		FlashSortPartitionFunction<NumericElement<Integer>, Integer> func = new FlashSortPartitionFunction<NumericElement<Integer>, Integer>(input, numClasses);
+		final int[] classBounds = CyclePartitioner.partition(input, func);
+		checkInput(func, input, classBounds, copy, numClasses);
 	}
 
-	private void checkInput(ArrayList<NumericElement<Integer>> output, int[] classBounds, ArrayList<NumericElement<Integer>> origArray, int numOrigClasses) {
+	private void checkInput(FlashSortPartitionFunction<NumericElement<Integer>, Integer> func, ArrayList<NumericElement<Integer>> output, int[] classBounds, ArrayList<NumericElement<Integer>> origArray, int numOrigClasses) {
 		if (classBounds == null) {
 			printInputCode(origArray, numOrigClasses);
 		}
@@ -143,6 +151,8 @@ public class SortTest {
 		// Confirm the max value of a class is less than the min value of the next upper class.
 		int[] prevMinAndMax = getMinAndMax(output, classBounds, 0);
 		int[] currMinAndMax = null;
+
+		assertEquals("The element in the upper bound of the class 0 belongs to class zero.", 0, func.getClass(output.get(classBounds[0])));
 
 		for (int i = 1; i < classBounds.length; ++i) {
 			currMinAndMax = getMinAndMax(output, classBounds, i);
