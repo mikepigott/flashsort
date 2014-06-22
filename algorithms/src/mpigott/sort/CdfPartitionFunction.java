@@ -105,6 +105,7 @@ public final class CdfPartitionFunction<T extends Element<U>, U> {
 		final double numSamples = Math.min(getMinSamplesPerCategory(alpha, cdfDistance), inputSize);
 
 		final int randomSampleIndex = (int) Math.floor(inputSize / numSamples);
+		int actualNumSamples = 0;
 		for (int index = 0; index < input.size(); index += randomSampleIndex) {
 			int cell = (int) (input.get(index).distance(min) / perCellRange);
 			if (cell >= sampleCountsPerCell.length) {
@@ -112,13 +113,14 @@ public final class CdfPartitionFunction<T extends Element<U>, U> {
 				cell = sampleCountsPerCell.length - 1;
 			}
 			++sampleCountsPerCell[cell];
+			++actualNumSamples;
 		}
 
 		/* Now that we have a distribution for the set of samples,
 		 * we can calculate the cumulative distribution function.
 		 */
 		cdf = new double[sampleCountsPerCell.length];
-		final double sc = numSamples + numCells;
+		final double sc = actualNumSamples + numCells;
 		double prevSi = 0.0;
 		for (int cellIndex = 0; cellIndex < sampleCountsPerCell.length; ++cellIndex) {
 			cdf[cellIndex] = (sampleCountsPerCell[cellIndex] + 1.0) / sc + prevSi;
@@ -132,10 +134,6 @@ public final class CdfPartitionFunction<T extends Element<U>, U> {
 			cellNum = cdf.length - 1;
 		}
 		final double prevCdf = (cellNum == 0.0) ? 0.0 : cdf[cellNum - 1];
-		final double slope = (cdf[cellNum] - prevCdf) / perCellRange;
-
-		final double x = value.distance(min) -
-			((cellNum == 0) ? 0.0 : perCellUpperBounds[cellNum - 1]);
 
 		/* "The second step finds px, the cumulative probability or CDF of x.
 		 *  It equals to the cumulative probability of its preceding cell
@@ -149,7 +147,15 @@ public final class CdfPartitionFunction<T extends Element<U>, U> {
 		 * current value.
 		 *
 		 * I think.  It's worth a shot.
+		 *
+		 * [UPDATE: We are consistently underweighting the last bucket.]
+		 * [UPDATE: Many buckets contain the maximum size, indicating a new sort.]
 		 */
+		final double slope = (cdf[cellNum] - prevCdf) / perCellRange;
+
+		final double x = value.distance(min) -
+			((cellNum == 0) ? 0.0 : perCellUpperBounds[cellNum - 1]);
+
 		final double currCdf = slope * x + prevCdf;
 
 		return (int) (currCdf * numCells);

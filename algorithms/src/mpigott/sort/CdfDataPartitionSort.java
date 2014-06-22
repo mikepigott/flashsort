@@ -1,9 +1,6 @@
 package mpigott.sort;
 
 import java.util.List;
-import java.util.TreeMap;
-
-import org.apache.commons.math3.special.Erf;
 
 /**
  * This implements the sorting algorithm described in

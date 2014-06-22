@@ -41,14 +41,41 @@ public class CdfDataPartitionSortTest {
 			new CdfPartitionFunction<NumericElement<Double>, Double>(input, 100, 0.05, 0.01);
 
 		SummaryStatistics statistics = getBucketStatistics(input, func);
-		System.out.println(statistics);
 
-		for (int i = 0; i < input.size(); ++i) {
-			if (func.getClass(input.get(i)) == statistics.getMin()) {
-				System.out.println("Bucket " + func.getClass(input.get(i)) + " contains the minumum of " + statistics.getMin() + " elements.");
-				break;
-			}
-		}
+		assertEquals(1000, (int) statistics.getN());
+		assertTrue(statistics.getStandardDeviation() < 3.0);
+		assertEquals(95,   (int) statistics.getMin());
+		assertEquals(102,  (int) statistics.getMax());
+	}
+
+	@Test
+	public void testPartitionFunction3() {
+		ArrayList<NumericElement<Double>> input = createNonRandomInput(30000, -50.0);
+
+		CdfPartitionFunction<NumericElement<Double>, Double> func =
+			new CdfPartitionFunction<NumericElement<Double>, Double>(input, 100, 0.05, 0.01);
+
+		SummaryStatistics statistics = getBucketStatistics(input, func);
+
+		assertEquals(300, statistics.getN());
+		assertTrue(statistics.getStandardDeviation() < 1.0);
+		assertEquals(99, (int) statistics.getMin());
+		assertEquals(101, (int) statistics.getMax());
+	}
+
+	@Test
+	public void testPartitionFunction4() {
+		ArrayList<NumericElement<Double>> input = createNonRandomInput(10000, -50.0);
+
+		CdfPartitionFunction<NumericElement<Double>, Double> func =
+			new CdfPartitionFunction<NumericElement<Double>, Double>(input, 100, 0.05, 0.01);
+
+		SummaryStatistics statistics = getBucketStatistics(input, func);
+
+		assertEquals(100, statistics.getN());
+		assertTrue(statistics.getStandardDeviation() < 1.0);
+		assertEquals(99, (int) statistics.getMin());
+		assertEquals(101, (int) statistics.getMax());
 	}
 
 	private ArrayList<NumericElement<Double>> createNonRandomInput(int numElements, double min) {
