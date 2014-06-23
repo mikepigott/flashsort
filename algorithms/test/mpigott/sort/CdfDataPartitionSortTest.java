@@ -142,7 +142,7 @@ public class CdfDataPartitionSortTest {
 
 	@Test
 	public void testVariousSorters() {
-		ArrayList<NumericElement<Double>> cdfPartitionInput = createRandomInput(85000, -250000.0, 1250000.0);
+		ArrayList<NumericElement<Double>> cdfPartitionInput = createRandomInput(1000000, -250000.0, 1250000.0);
 		ArrayList<NumericElement<Double>> flashSortInput = (ArrayList<NumericElement<Double>>) cdfPartitionInput.clone();
 
 		CdfPartitionFunction<NumericElement<Double>, Double> cdfPartitionFunc =
@@ -158,7 +158,7 @@ public class CdfDataPartitionSortTest {
 		}
 
 		FlashSortPartitionFunction<NumericElement<Double>, Double> fsPartitionFunc =
-			new FlashSortPartitionFunction<NumericElement<Double>, Double>(flashSortInput, 85);
+			new FlashSortPartitionFunction<NumericElement<Double>, Double>(flashSortInput, 1000);
 
 		int[] fsClassBounds = CyclePartitioner.partition(flashSortInput, fsPartitionFunc);
 

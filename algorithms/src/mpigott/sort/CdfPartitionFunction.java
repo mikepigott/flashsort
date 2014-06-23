@@ -95,7 +95,7 @@ public final class CdfPartitionFunction<T extends Element<U>, U> implements Part
 
 		// First we'll determine the range of values.
 		min = input.get(0);
-		max = input.get(0);
+		T max = input.get(0);
 
 		for (int index = 1; index < input.size(); ++index) {
 			T value = input.get(index);
@@ -110,11 +110,6 @@ public final class CdfPartitionFunction<T extends Element<U>, U> implements Part
 
 		perCellRange = (max.distance(min) + 1.0) / numCells;
 
-		perCellUpperBounds = new double[(int) numCells];
-		for (int i = 0; i < numCells; ++i) {
-			perCellUpperBounds[i] = (i + 1) * perCellRange;
-		}
-
 		int[] sampleCountsPerCell = new int[(int) numCells];
 
 		/* The next step is to randomly sample elements from the list to
@@ -128,7 +123,6 @@ public final class CdfPartitionFunction<T extends Element<U>, U> implements Part
 		for (int index = 0; index < input.size(); index += randomSampleIndex) {
 			int cell = (int) (input.get(index).distance(min) / perCellRange);
 			if (cell >= sampleCountsPerCell.length) {
-				System.out.println("input.get(" + index + "){" + input.get(index) + "}.distance({" + min + "}) {" + input.get(index).distance(min) + "} / perCellRange {" + perCellRange + "} = " + cell + "; sampleCountsPerCell.length = " + sampleCountsPerCell.length);
 				cell = sampleCountsPerCell.length - 1;
 			}
 			++sampleCountsPerCell[cell];
@@ -145,21 +139,21 @@ public final class CdfPartitionFunction<T extends Element<U>, U> implements Part
 			cdf[cellIndex] = (sampleCountsPerCell[cellIndex] + 1.0) / sc + prevSi;
 			prevSi = cdf[cellIndex];
 		}
-
 	}
 
 	/**
-	 * Returns the class of the input <code>value</code>
+	 * Returns the class of the input <code>element</code>
 	 * based on the CDF function of the sample sizes.
 	 *
 	 * @see PartitionFunction#getClass(Element)
 	 */
-	public int getClass(T value) {
-		int cellNum = (int) (value.distance(min) / perCellRange);
+	public int getClass(T element) {
+		double value = element.distance(min);
+
+		int cellNum = (int) (value / perCellRange);
 		if (cellNum >= cdf.length) {
 			cellNum = cdf.length - 1;
 		}
-		final double prevCdf = (cellNum == 0.0) ? 0.0 : cdf[cellNum - 1];
 
 		/* "The second step finds px, the cumulative probability or CDF of x.
 		 *  It equals to the cumulative probability of its preceding cell
@@ -172,14 +166,14 @@ public final class CdfPartitionFunction<T extends Element<U>, U> implements Part
 		 * previous cell, m is the slope calculated above, and x is the
 		 * current value.
 		 */
+		double prevRange = cellNum * perCellRange;
+		double prevCdf = (cellNum == 0) ? 0.0 : cdf[cellNum - 1];
+
 		final double slope = (cdf[cellNum] - prevCdf) / perCellRange;
+		final double x = value - prevRange;
+		final double px = slope * x + prevCdf;
 
-		final double x = value.distance(min) -
-			((cellNum == 0) ? 0.0 : perCellUpperBounds[cellNum - 1]);
-
-		final double currCdf = slope * x + prevCdf;
-
-		return (int) (currCdf * numCells);
+		return (int) (px * numCells);
 	}
 
 	/**
@@ -192,9 +186,7 @@ public final class CdfPartitionFunction<T extends Element<U>, U> implements Part
 	}
 
 	private T min;
-	private T max;
 	private double[] cdf;
 	private final double numCells;
 	private final double perCellRange;
-	private double[] perCellUpperBounds;
 }
