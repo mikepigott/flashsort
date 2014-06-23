@@ -1,4 +1,4 @@
-package mpigott.test;
+package mpigott.sort;
 
 import static org.junit.Assert.*;
 
@@ -17,12 +17,12 @@ import org.junit.Test;
  * @author Mike Pigott
  *
  */
-public class SortTest {
+public class FlashSortTest {
 
 	public static void main(String[] args) throws Exception {
 		// If a (space-delimited) array is provided on the command-line, use it.
 		if (args.length == 0) {
-			SortTest test = new SortTest();
+			FlashSortTest test = new FlashSortTest();
 			test.randomFlashSortTest();
 		} else {
 			ArrayList<NumericElement<Integer>> input = new ArrayList<NumericElement<Integer>>(args.length - 1);

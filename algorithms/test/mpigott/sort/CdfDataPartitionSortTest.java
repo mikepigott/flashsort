@@ -140,6 +140,39 @@ public class CdfDataPartitionSortTest {
 		checkInput(input, func, classBounds);
 	}
 
+	@Test
+	public void testVariousSorters() {
+		ArrayList<NumericElement<Double>> cdfPartitionInput = createRandomInput(85000, -250000.0, 1250000.0);
+		ArrayList<NumericElement<Double>> flashSortInput = (ArrayList<NumericElement<Double>>) cdfPartitionInput.clone();
+
+		CdfPartitionFunction<NumericElement<Double>, Double> cdfPartitionFunc =
+			new CdfPartitionFunction<NumericElement<Double>, Double>(cdfPartitionInput, 1000, 0.05, 0.0056);
+
+		int[] cdfPartitionClassBounds = CyclePartitioner.partition(cdfPartitionInput, cdfPartitionFunc);
+
+		SummaryStatistics cdfPartitionStatistics = new SummaryStatistics();
+		int prevClassBound = 0;
+		for (int classBound : cdfPartitionClassBounds) {
+			cdfPartitionStatistics.addValue(classBound - prevClassBound);
+			prevClassBound = classBound;
+		}
+
+		FlashSortPartitionFunction<NumericElement<Double>, Double> fsPartitionFunc =
+			new FlashSortPartitionFunction<NumericElement<Double>, Double>(flashSortInput, 85);
+
+		int[] fsClassBounds = CyclePartitioner.partition(flashSortInput, fsPartitionFunc);
+
+		SummaryStatistics fsPartitionStatistics = new SummaryStatistics();
+		prevClassBound = 0;
+		for (int classBound : fsClassBounds) {
+			fsPartitionStatistics.addValue(classBound - prevClassBound);
+			prevClassBound = classBound;
+		}
+
+		System.out.println(cdfPartitionStatistics);
+		System.out.println(fsPartitionStatistics);
+	}
+
 	private ArrayList<NumericElement<Double>> createNonRandomInput(int numElements, double min) {
 		ArrayList<NumericElement<Double>> input =
 				new ArrayList<NumericElement<Double>>(numElements);
