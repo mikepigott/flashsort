@@ -6,8 +6,14 @@ import java.util.TreeMap;
 import org.apache.commons.math3.special.Erf;
 
 /**
- * This class calculates the partition value for an element
- * to be sorted using {@link CdfDataPartitionSort}.
+ * This is an implementation of the partition function described in
+ * "Adaptive Data Partition for Sorting using Probability Distribution"
+ * ( http://www.cs.rochester.edu/~cding/Documents/Publications/icpp04.pdf ).
+ *
+ * The function takes a sample of the input values and generates a cumulative
+ * distribution function (CDF) from those values.  It uses that CDF to determine
+ * the class that a value in the array belongs in when {@link #getClass(Element)}
+ * is called.
  *
  * @author  Mike Pigott
  * @version 1.0
@@ -70,6 +76,19 @@ public final class CdfPartitionFunction<T extends Element<U>, U> implements Part
 	    return Math.sqrt(2) * Erf.erfcInv(2*percentile);
 	}
 
+	/**
+	 * Generates a cumulative distribution function (CDF) for
+	 * <code>Math.ceil(input.size() / cellSize)</code> classes.
+	 *
+	 * The number of samples to take is defined by the <code>alpha</code>
+	 * (where <code>1-alpha</code> is the confidence level) and distance
+	 * between the sample CDF and the population CDF. 
+	 *
+	 * @param input       The population to retrieve samples from.
+	 * @param cellSize    The size of each cell.
+	 * @param alpha       <code>1 - alpha</code> is the confidence level that the sample CDF is within the <code>cdfDistance</code> of the population CDF.
+	 * @param cdfDistance The distance between the sample CDF and the population CDF, with a confidence level of <code>1 - alpha</code>.
+	 */
 	public CdfPartitionFunction(List<T> input, int cellSize, double alpha, double cdfDistance) {
 		final double inputSize = input.size();
 		numCells = Math.ceil(inputSize / (double) cellSize);
@@ -129,6 +148,12 @@ public final class CdfPartitionFunction<T extends Element<U>, U> implements Part
 
 	}
 
+	/**
+	 * Returns the class of the input <code>value</code>
+	 * based on the CDF function of the sample sizes.
+	 *
+	 * @see PartitionFunction#getClass(Element)
+	 */
 	public int getClass(T value) {
 		int cellNum = (int) (value.distance(min) / perCellRange);
 		if (cellNum >= cdf.length) {
@@ -143,14 +168,9 @@ public final class CdfPartitionFunction<T extends Element<U>, U> implements Part
 		 *  of the cell.  The calculation assumes a uniform distribution 
 		 *  within each cell."
 		 *
-		 * This sounds like we want y = mx + b where b is the cdf of the
+		 * This is implemented as y = mx + b, where b is the cdf of the
 		 * previous cell, m is the slope calculated above, and x is the
 		 * current value.
-		 *
-		 * I think.  It's worth a shot.
-		 *
-		 * [UPDATE: We are consistently underweighting the last bucket.]
-		 * [UPDATE: Many buckets contain the maximum size, indicating a new sort.]
 		 */
 		final double slope = (cdf[cellNum] - prevCdf) / perCellRange;
 
@@ -162,6 +182,11 @@ public final class CdfPartitionFunction<T extends Element<U>, U> implements Part
 		return (int) (currCdf * numCells);
 	}
 
+	/**
+	 * The total number of classes that an item can be partitioned into.
+	 *
+	 * @see PartitionFunction#getNumClasses()
+	 */
 	public int getNumClasses() {
 		return (int) numCells;
 	}

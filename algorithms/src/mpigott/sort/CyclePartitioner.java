@@ -3,13 +3,20 @@ package mpigott.sort;
 import java.util.List;
 
 /**
- * Implementation of Flash Sort.
+ * Implementation of the Flash Sort cycle-based partitioner.
  * http://www.drdobbs.com/database/the-flashsort1-algorithm/184410496
  *
- * The key innovation behind flash sort is that if you have an evenly-distributed
- * data set, you can create "classes" of sub-ranges of equal size - knowing only
- * the global maximum and minimum - and place each element into their appropriate
- * class in O(N) time, in-place.  The algorithm is not stable.
+ * The purpose behind a classification algorithm is that if you can evenly-
+ * distribute your (large) input data set into classes, the input elements
+ * can classified and moved into their respective class in O(N) time.
+ *
+ * The key innovation behind the partition function in Flash Sort is to
+ * perform that classification and move in-place.  The flash sort algorithm
+ * works by defining a "cycle leader" - the first element in the list that is
+ * not in the correct class.  The cycle leader is moved to its correct class,
+ * evicting an existing item - which gets moved to its class, and so on.  Once
+ * the cycle leader is replaced, the cycle stops - and we search for the next
+ * element in the list that is in the wrong place.
  *
  * Once all of the elements have been placed, each class can be sorted using a
  * standard sorting algorithm (insertion sort is described, but any will do).
@@ -26,12 +33,6 @@ import java.util.List;
  * class sizes.  Cascading is also handled, so if a neighboring class is moved into
  * its neighbor's class, both are resized accordingly.  And so on.
  *
- * The flash sort algorithm works by defining a "cycle leader" - the first element in
- * the list that is not in the correct class.  The cycle leader is moved to its correct
- * class, evicting an existing item - which gets moved to its class, and so on.  Once
- * the cycle leader is replaced, the cycle stops - and we search for the next element
- * in the list that is in the wrong place.
- *
  * When we expand a class, we always expand in the direction of the cycle leader.  That
  * is the only space in the array that is guaranteed to be unfilled.  If we expand into
  * a neighbor, we evict the element on the border.  Since we always expand in the direction
@@ -42,8 +43,6 @@ import java.util.List;
  * used concurrently with another algorithm (or itself).  This is an in-place sort, after all.
  *
  * More information can be found in the linked Dr. Dobbs article.
- *
- * June 16 - 19, 2014
  *
  * @author Mike Pigott
  * @version 1.0
@@ -73,13 +72,9 @@ public class CyclePartitioner {
 	}
 
 	/**
-	 * Sorts the input array into the provided number of classes in O(N) time, in-place,
+	 * Partitions the input array into the provided number of classes in O(N) time, in-place,
 	 * unstably.  The upper bounds of all of the classes is returned, allowing for a
-	 * separate sorting algorithm to be conducted on each bucket, possibly in parallel.
-	 *
-	 * The number of classes is an upper bound.  If the range between the global
-	 * minimum and maximum is larger than the number of classes, only (max - min + 1)
-	 * classes will be used.
+	 * separate sorting algorithm to be conducted on each class, possibly in parallel.
 	 *
 	 * The original Dr. Dobbs article recommended the number of classes to be (0.43 * input.size)
 	 * if using serial insertion sort as the second sorting algorithm.  However, I found that a
@@ -92,13 +87,14 @@ public class CyclePartitioner {
 	 * If the second stage will be done in parallel, choose the number of processors / hyper-threads
 	 * you have to do the work.
 	 *
-	 * @param input      The input array to bucket into classes.
+	 * @param input The input array to bucket into classes.
 	 *
-	 * @param numClasses The maximum number of classes to sort the input into, or <code>null</code>
-	 *                   if either the array has fewer than 2 elements, or fewer than 2 classes is
-	 *                   requested.
+	 * @param partitionFunction The function to use when partitioning elements into classes.
 	 *
-	 * @return           The upper bounds of each class, in increasing order.
+	 * @return The upper bounds of each class, in increasing order, or
+	 *         <code>null</code> if either the array has fewer than 2
+	 *         elements, or if the partition function requests fewer
+	 *         than two classes.
 	 */
 	public static <T extends Element<U>, U> int[] partition(List<T> input, PartitionFunction<T, U> partitionFunction) {
 		if ((input == null) || input.isEmpty() || (input.size() < 2) || (partitionFunction.getNumClasses() < 2)) {
