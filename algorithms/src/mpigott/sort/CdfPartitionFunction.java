@@ -108,7 +108,7 @@ public final class CdfPartitionFunction<T extends Element<U>, U> implements Part
 			}
 		}
 
-		perCellRange = (max.distance(min) + 1.0) / numCells;
+		perCellRange = max.distance(min) / numCells;
 
 		int[] sampleCountsPerCell = new int[(int) numCells];
 
@@ -173,7 +173,13 @@ public final class CdfPartitionFunction<T extends Element<U>, U> implements Part
 		final double x = value - prevRange;
 		final double px = slope * x + prevCdf;
 
-		return (int) (px * numCells);
+		double classification = (int)(px * numCells);
+
+		if (classification >= numCells) {
+			classification = (numCells - 1.0);
+		}
+
+		return (int) classification;
 	}
 
 	/**

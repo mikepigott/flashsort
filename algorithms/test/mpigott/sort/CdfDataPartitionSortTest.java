@@ -60,9 +60,9 @@ public class CdfDataPartitionSortTest {
 		SummaryStatistics statistics = getBucketStatistics(input, func);
 
 		assertEquals(300, statistics.getN());
-		assertTrue(statistics.getStandardDeviation() < 1.0);
-		assertEquals(99, (int) statistics.getMin());
-		assertEquals(101, (int) statistics.getMax());
+		assertEquals(  0, (int) statistics.getStandardDeviation());
+		assertEquals(100, (int) statistics.getMin());
+		assertEquals(100, (int) statistics.getMax());
 	}
 
 	@Test
@@ -75,9 +75,9 @@ public class CdfDataPartitionSortTest {
 		SummaryStatistics statistics = getBucketStatistics(input, func);
 
 		assertEquals(100, statistics.getN());
-		assertTrue(statistics.getStandardDeviation() < 1.0);
-		assertEquals(99, (int) statistics.getMin());
-		assertEquals(101, (int) statistics.getMax());
+		assertEquals(  0, (int) statistics.getStandardDeviation());
+		assertEquals(100, (int) statistics.getMin());
+		assertEquals(100, (int) statistics.getMax());
 	}
 
 	@Test
@@ -141,36 +141,75 @@ public class CdfDataPartitionSortTest {
 	}
 
 	@Test
-	public void testVariousSorters() {
-		ArrayList<NumericElement<Double>> cdfPartitionInput = createRandomInput(1000000, -250000.0, 1250000.0);
+	public void testCdfRanges() {
+		ArrayList<NumericElement<Double>> cdfPartitionInput1 = createStandardNormalRandomInput(1000000, 1250000.0);
+		ArrayList<NumericElement<Double>> cdfPartitionInput2 = (ArrayList<NumericElement<Double>>) cdfPartitionInput1.clone();
+
+		CdfPartitionFunction<NumericElement<Double>, Double> cdfPartition1Func =
+			new CdfPartitionFunction<NumericElement<Double>, Double>(cdfPartitionInput1, 10000, 0.05, 0.0056);
+
+		int[] cdfPartition1ClassBounds = CyclePartitioner.partition(cdfPartitionInput1, cdfPartition1Func);
+
+		SummaryStatistics cdfPartition1Statistics = getClassBoundsStatistics(cdfPartition1ClassBounds);
+
+		CdfPartitionFunction<NumericElement<Double>, Double> cdfPartition2Func =
+			new CdfPartitionFunction<NumericElement<Double>, Double>(cdfPartitionInput2, 1000, 0.05, 0.0056);
+
+		int[] cdfPartition2ClassBounds = CyclePartitioner.partition(cdfPartitionInput2, cdfPartition2Func);
+
+		SummaryStatistics cdfPartition2Statistics = getClassBoundsStatistics(cdfPartition2ClassBounds);
+
+		assertTrue("The relative standard deviation of the output with larger class sizes should be smaller than the relative standard deviation of the output with smaller class sizes.", (cdfPartition1Statistics.getStandardDeviation() / cdfPartition1Statistics.getMean()) < (cdfPartition2Statistics.getStandardDeviation() / cdfPartition2Statistics.getMean()));
+	}
+
+	@Test
+	public void testVariousSortersRandomInput() {
+		ArrayList<NumericElement<Double>> cdfPartitionInput = createRandomInput(1000000, 0.0, 15000.0);
 		ArrayList<NumericElement<Double>> flashSortInput = (ArrayList<NumericElement<Double>>) cdfPartitionInput.clone();
 
 		CdfPartitionFunction<NumericElement<Double>, Double> cdfPartitionFunc =
-			new CdfPartitionFunction<NumericElement<Double>, Double>(cdfPartitionInput, 1000, 0.05, 0.0056);
+			new CdfPartitionFunction<NumericElement<Double>, Double>(cdfPartitionInput, 10000, 0.05, 0.0056);
 
 		int[] cdfPartitionClassBounds = CyclePartitioner.partition(cdfPartitionInput, cdfPartitionFunc);
 
-		SummaryStatistics cdfPartitionStatistics = new SummaryStatistics();
-		int prevClassBound = 0;
-		for (int classBound : cdfPartitionClassBounds) {
-			cdfPartitionStatistics.addValue(classBound - prevClassBound);
-			prevClassBound = classBound;
-		}
+		checkInput(cdfPartitionInput, cdfPartitionFunc, cdfPartitionClassBounds);
 
 		FlashSortPartitionFunction<NumericElement<Double>, Double> fsPartitionFunc =
-			new FlashSortPartitionFunction<NumericElement<Double>, Double>(flashSortInput, 1000);
+			new FlashSortPartitionFunction<NumericElement<Double>, Double>(flashSortInput, 100);
 
 		int[] fsClassBounds = CyclePartitioner.partition(flashSortInput, fsPartitionFunc);
 
-		SummaryStatistics fsPartitionStatistics = new SummaryStatistics();
-		prevClassBound = 0;
-		for (int classBound : fsClassBounds) {
-			fsPartitionStatistics.addValue(classBound - prevClassBound);
-			prevClassBound = classBound;
-		}
+		checkInput(flashSortInput, fsPartitionFunc, fsClassBounds);
 
-		System.out.println(cdfPartitionStatistics);
-		System.out.println(fsPartitionStatistics);
+		SummaryStatistics cdfPartitionStatistics = getClassBoundsStatistics(cdfPartitionClassBounds);
+		SummaryStatistics flashSortStatistics = getClassBoundsStatistics(fsClassBounds);
+
+		assertTrue("For evenly-distributed random input, the standard deviation of flash sort should be smaller.", flashSortStatistics.getStandardDeviation() < cdfPartitionStatistics.getStandardDeviation());
+	}
+
+	@Test
+	public void testVariousSortersStandardNormalRandomInput() {
+		ArrayList<NumericElement<Double>> cdfPartitionInput = createStandardNormalRandomInput(1000000, 9000.0);
+		ArrayList<NumericElement<Double>> flashSortInput = (ArrayList<NumericElement<Double>>) cdfPartitionInput.clone();
+
+		CdfPartitionFunction<NumericElement<Double>, Double> cdfPartitionFunc =
+			new CdfPartitionFunction<NumericElement<Double>, Double>(cdfPartitionInput, 10000, 0.05, 0.0056);
+
+		int[] cdfPartitionClassBounds = CyclePartitioner.partition(cdfPartitionInput, cdfPartitionFunc);
+
+		checkInput(cdfPartitionInput, cdfPartitionFunc, cdfPartitionClassBounds);
+
+		FlashSortPartitionFunction<NumericElement<Double>, Double> fsPartitionFunc =
+			new FlashSortPartitionFunction<NumericElement<Double>, Double>(flashSortInput, 100);
+
+		int[] fsClassBounds = CyclePartitioner.partition(flashSortInput, fsPartitionFunc);
+
+		checkInput(flashSortInput, fsPartitionFunc, fsClassBounds);
+
+		SummaryStatistics cdfPartitionStatistics = getClassBoundsStatistics(cdfPartitionClassBounds);
+		SummaryStatistics flashSortStatistics = getClassBoundsStatistics(fsClassBounds);
+
+		assertTrue("For evenly-distributed random input, the standard deviation of CDF-based partitioning should be smaller.", flashSortStatistics.getStandardDeviation() > cdfPartitionStatistics.getStandardDeviation());
 	}
 
 	private ArrayList<NumericElement<Double>> createNonRandomInput(int numElements, double min) {
@@ -201,6 +240,25 @@ public class CdfDataPartitionSortTest {
 		return input;
 	}
 
+	private ArrayList<NumericElement<Double>> createStandardNormalRandomInput(int numElems, double variance) {
+		StandardNormalRandomNumberGenerator stdNormRand = new StandardNormalRandomNumberGenerator(variance);
+
+		ArrayList<NumericElement<Double>> input = new ArrayList<NumericElement<Double>>(numElems);
+		for (int i = 0; i < numElems; ++i) {
+			input.add(new NumericElement<Double>(Double.NEGATIVE_INFINITY));
+		}
+		Random random = new Random(System.currentTimeMillis());
+		for (int i = 0; i < numElems; ++i) {
+			int index = random.nextInt(numElems);
+			while (input.get(index % numElems).getValue() > Double.NEGATIVE_INFINITY) {
+				++index;
+			}
+			input.set(index % numElems, new NumericElement<Double>(stdNormRand.getNextRandom()));
+		}
+
+		return input;
+	}
+
 	private <T extends Element<U>, U> SummaryStatistics getBucketStatistics(ArrayList<T> input, CdfPartitionFunction<T, U> func) {
 		TreeMap<Integer, Double> bucketSizes = new TreeMap<Integer, Double>();
 		for (int i = 0; i < input.size(); ++i) {
@@ -221,6 +279,16 @@ public class CdfDataPartitionSortTest {
 		return statistics;
 	}
 
+	private SummaryStatistics getClassBoundsStatistics(int[] classBounds) {
+		SummaryStatistics classBoundsStatistics = new SummaryStatistics();
+		int prevClassBound = 0;
+		for (int classBound : classBounds) {
+			classBoundsStatistics.addValue(classBound - prevClassBound);
+			prevClassBound = classBound;
+		}
+		return classBoundsStatistics;
+	}
+
 	private void checkInput(ArrayList<NumericElement<Double>> output, PartitionFunction<NumericElement<Double>, Double> func, int[] classBounds) {
 		assertNotNull(classBounds);
 
@@ -228,10 +296,10 @@ public class CdfDataPartitionSortTest {
 		double[] prevMinAndMax = getMinAndMax(output, classBounds, 0);
 		double[] currMinAndMax = null;
 
-		assertEquals("The element in the upper bound of the class 0 does not belong to class zero.", 0, func.getClass(output.get(classBounds[0])));
+		assertTrue("The element in the upper bound of the class 0 does not belong to class zero.", (func.getClass(output.get(classBounds[0])) == 0) || (classBounds[0] == 0));
 
 		for (int i = 1; i < classBounds.length; ++i) {
-			assertEquals("The element in the upper bound of the class " + i + " does not belong to class " + i + ".", i, func.getClass(output.get(classBounds[i])));
+			assertTrue("The element in the upper bound of the class " + i + " does not belong to class " + i + ".", (func.getClass(output.get(classBounds[i])) == i) || (classBounds[i] == classBounds[i - 1]));
 			currMinAndMax = getMinAndMax(output, classBounds, i);
 			final boolean isValid = prevMinAndMax[1] <= currMinAndMax[0];
 			assertTrue("Maximum of class " + (i - 1) + " (" + prevMinAndMax[1] + ") must be less than the min of class " + i + " (" + currMinAndMax[0] + ").", isValid);
@@ -275,5 +343,43 @@ public class CdfDataPartitionSortTest {
 		}
 
 		return minAndMax;
+	}
+
+	// From http://en.wikipedia.org/wiki/Box_Muller_transform
+	private static class StandardNormalRandomNumberGenerator {
+		private static final double TWO_PI = 6.2831853071795864769252866;
+
+		public StandardNormalRandomNumberGenerator(double variance) {
+			this.hasSpare = false;
+			this.rand1 = 0.0;
+			this.rand2 = 0.0;
+			this.random = new Random(System.currentTimeMillis());
+			this.variance = variance;
+		}
+
+		public double getNextRandom() {
+			if (hasSpare) {
+				hasSpare = false;
+				return Math.sqrt(variance * rand1) + Math.sin(rand2);
+			}
+
+			hasSpare = true;
+
+			rand1 = random.nextDouble();
+			if (rand1 < 1e-100) {
+				rand1 = 1e-100;
+			}
+			rand1 = -2 * Math.log(rand1);
+
+			rand2 = random.nextDouble() * TWO_PI;
+
+			return Math.sqrt(variance * rand1) * Math.cos(rand2);
+		}
+
+		private boolean hasSpare;
+		private double rand1;
+		private double rand2;
+		private Random random;
+		private double variance;
 	}
 }

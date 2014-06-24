@@ -31,7 +31,7 @@ Likewise, the `CyclePartitioner` partitions in `O(N)` time complexity in the bes
 
 I have found that larger classes lessen the number of total moves to partition the data.  This makes intuitive sense because the larger the average class size, the less the cascading effect when one class fills up.
 
-I have also found, surprisingly, that despite the `CdfPartitionFunction`'s additional complexity, it does not perform significantly better than the `FlashSortPartitionFunction` in the number of moves.  In fact, when the number of samples taken is much smaller than the number of elements, I have found the `FlashSortPartitionFunction` to perform much better - both in the standard deviation of class size, and in total number of moves required to partition the data.
+I have found that the `CdfPartitionFunction` is only significantly better (in class-size standard deviation and wall-clock performance) than the `FlashSortPartitionFunction` when the data is normally distributed.  Both show similar wall-clock performance, while the `FlashSortPartitionFunction` shows better class-size standard deviation, in evenly-distributed data.
 
 ## External Libraries
 
